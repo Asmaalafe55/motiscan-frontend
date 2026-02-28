@@ -65,3 +65,60 @@ export interface LiveSession {
   connectedStudents: string[]; // student IDs
   startedAt: string;
 }
+
+// Teacher exercise library
+export interface Exercise {
+  id: string;
+  title: string;
+  type: QuestionType;
+  instructions: string;
+  content?: string;
+  tags: string[];
+  // Underlying question structure used in exams
+  question: Question;
+}
+
+export interface ExamTemplate {
+  id: string;
+  title: string;
+  description: string;
+  teacherId: string;
+  createdAt: string;
+  exerciseIds: string[];
+}
+
+export type StudentStatus = "online" | "away" | "submitted";
+
+// Tracking per-exercise attempts
+export interface ExerciseAttempt {
+  examId: string;
+  exerciseId: string;
+  questionId: string;
+  studentId: string;
+  timeStarted: string;
+  timeAnswered?: string;
+  timeLeft?: string;
+  durationOnExercise?: number; // in seconds
+  answerValue?: string | number;
+  answerChanged: boolean;
+  skipped: boolean;
+  revisited: boolean;
+}
+
+export interface ExerciseNavigationEvent {
+  exerciseId: string;
+  exerciseIndex: number;
+  timestamp: string;
+  action: "enter" | "leave" | "answer" | "submit";
+}
+
+export interface StudentExamSession {
+  examId: string;
+  studentId: string;
+  startedAt: string;
+  lastActivityAt: string;
+  status: StudentStatus;
+  currentExerciseIndex: number;
+  totalExercises: number;
+  timeline: ExerciseNavigationEvent[];
+}

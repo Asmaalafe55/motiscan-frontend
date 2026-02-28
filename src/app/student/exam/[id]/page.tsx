@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Layout } from "@/components/Layout";
@@ -18,10 +18,24 @@ import {
 } from "@/components/ui/select";
 import { examService } from "@/services/exam.service";
 import { liveSessionService } from "@/services/liveSession.service";
-import { Exam, Answer } from "@/types";
+import { trackingService } from "@/services/tracking.service";
+import { Exam, Answer, ExerciseAttempt } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Clock, Save, Send } from "lucide-react";
+import { Send } from "lucide-react";
+
+type AnswersForm = { answers: Record<string, string | number> };
+
+interface ExerciseMetrics {
+  timeStarted?: Date;
+  timeAnswered?: Date;
+  timeLeft?: Date;
+  durationOnExercise?: number;
+  answerValue?: string | number;
+  answerChanged: boolean;
+  skipped: boolean;
+  revisited: boolean;
+}
 
 export default function TakeExamPage() {
   const params = useParams();
@@ -30,13 +44,20 @@ export default function TakeExamPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [exam, setExam] = useState<Exam | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [metrics, setMetrics] = useState<Record<string, ExerciseMetrics>>({});
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [autoSubmitted, setAutoSubmitted] = useState(false);
 
-  const { register, handleSubmit, watch, setValue } = useForm<{ answers: Record<string, string | number> }>({
+  const { register, handleSubmit, watch, setValue } = useForm<AnswersForm>({
     defaultValues: { answers: {} },
   });
+
+  const exercises = useMemo(() => exam?.questions ?? [], [exam]);
+  const totalExercises = exercises.length;
+  const currentExercise = exercises[currentIndex];
 
   useEffect(() => {
     const fetchExam = async () => {
@@ -52,17 +73,19 @@ export default function TakeExamPage() {
           return;
         }
         setExam(data);
-        setStartTime(new Date());
-        
-        // Join live session
+        const started = new Date();
+        setStartTime(started);
+
         if (user) {
           await liveSessionService.addStudentToSession(examId, user.id);
+          await trackingService.startStudentSession(examId, user.id, data.questions.length, started);
         }
 
-        // Set timer if duration is specified
-        if (data.duration) {
-          setTimeRemaining(data.duration * 60); // Convert to seconds
-        }
+        const timeout = setTimeout(() => {
+          setAutoSubmitted(true);
+        }, 5 * 60 * 60 * 1000); // 5 hours
+
+        return () => clearTimeout(timeout);
       } catch (error) {
         console.error("Error fetching exam:", error);
       }
@@ -72,42 +95,127 @@ export default function TakeExamPage() {
   }, [examId, user, router, toast]);
 
   useEffect(() => {
-    if (timeRemaining === null || timeRemaining <= 0) return;
-
-    const interval = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [timeRemaining]);
-
-  useEffect(() => {
-    if (timeRemaining === 0 && exam) {
+    if (autoSubmitted && exam) {
       toast({
-        title: "Time's up!",
-        description: "Your exam will be submitted automatically.",
+        title: "Session ended",
+        description: "Your exam session reached the maximum duration and was submitted.",
       });
       handleAutoSubmit();
     }
-  }, [timeRemaining]);
+  }, [autoSubmitted, exam]);
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  const ensureMetrics = (exerciseId: string): ExerciseMetrics => {
+    return (
+      metrics[exerciseId] ?? {
+        answerChanged: false,
+        skipped: true,
+        revisited: false,
+      }
+    );
+  };
+
+  const handleEnterExercise = async (index: number) => {
+    if (!exam || !user) return;
+    const exercise = exercises[index];
+    if (!exercise) return;
+
+    setMetrics((prev) => {
+      const current = ensureMetrics(exercise.id);
+      const isRevisit = !!current.timeStarted;
+      return {
+        ...prev,
+        [exercise.id]: {
+          ...current,
+          timeStarted: current.timeStarted ?? new Date(),
+          revisited: current.revisited || isRevisit,
+        },
+      };
+    });
+
+    await trackingService.updateStudentSession({
+      examId,
+      studentId: user.id,
+      currentExerciseIndex: index,
+      totalExercises,
+      exerciseId: exercise.id,
+      action: "enter",
+    });
+  };
+
+  const handleLeaveExercise = async (index: number) => {
+    if (!exam || !user) return;
+    const exercise = exercises[index];
+    if (!exercise) return;
+
+    setMetrics((prev) => {
+      const current = ensureMetrics(exercise.id);
+      const timeLeft = new Date();
+      const durationOnExercise = current.timeStarted
+        ? Math.floor((timeLeft.getTime() - current.timeStarted.getTime()) / 1000)
+        : current.durationOnExercise;
+
+      return {
+        ...prev,
+        [exercise.id]: {
+          ...current,
+          timeLeft,
+          durationOnExercise,
+        },
+      };
+    });
+
+    await trackingService.updateStudentSession({
+      examId,
+      studentId: user.id,
+      currentExerciseIndex: index,
+      totalExercises,
+      exerciseId: exercise.id,
+      action: "leave",
+    });
+  };
+
+  const handleAnswerChange = async (exerciseId: string, index: number, value: string | number) => {
+    if (!exam || !user) return;
+    setMetrics((prev) => {
+      const current = ensureMetrics(exerciseId);
+      const now = new Date();
+      const firstAnswered = current.timeAnswered == null;
+      return {
+        ...prev,
+        [exerciseId]: {
+          ...current,
+          timeStarted: current.timeStarted ?? now,
+          timeAnswered: current.timeAnswered ?? now,
+          answerValue: value,
+          answerChanged: !firstAnswered || current.answerValue !== undefined,
+          skipped: false,
+        },
+      };
+    });
+
+    await trackingService.updateStudentSession({
+      examId,
+      studentId: user.id,
+      currentExerciseIndex: index,
+      totalExercises,
+      exerciseId,
+      action: "answer",
+    });
+  };
+
+  const goToExercise = async (nextIndex: number) => {
+    if (!exam) return;
+    await handleLeaveExercise(currentIndex);
+    setCurrentIndex(nextIndex);
+    await handleEnterExercise(nextIndex);
   };
 
   const handleAutoSubmit = async () => {
     if (!exam || !user || !startTime) return;
-    
-    const answers: Answer[] = exam.questions.map((q) => {
-      const value = watch(`answers.${q.id}`);
+
+    const formValues = watch("answers");
+    const answers: Answer[] = exercises.map((q) => {
+      const value = formValues[q.id];
       return {
         questionId: q.id,
         value: value || (q.type === "rating_scale" ? 5 : ""),
@@ -115,8 +223,34 @@ export default function TakeExamPage() {
     });
 
     const timeSpent = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
-
     await submitExam(answers, timeSpent);
+  };
+
+  const buildAttempts = (): ExerciseAttempt[] => {
+    if (!exam || !user || !startTime) return [];
+    return exercises.map((q) => {
+      const m = ensureMetrics(q.id);
+      const timeStarted = m.timeStarted ?? startTime;
+      const timeLeft = m.timeLeft ?? new Date();
+      const durationOnExercise =
+        m.durationOnExercise ??
+        Math.floor((timeLeft.getTime() - timeStarted.getTime()) / 1000);
+
+      return {
+        examId,
+        exerciseId: q.id,
+        questionId: q.id,
+        studentId: user.id,
+        timeStarted: timeStarted.toISOString(),
+        timeAnswered: m.timeAnswered?.toISOString(),
+        timeLeft: timeLeft.toISOString(),
+        durationOnExercise,
+        answerValue: m.answerValue,
+        answerChanged: m.answerChanged,
+        skipped: m.skipped && m.answerValue === undefined,
+        revisited: m.revisited,
+      };
+    });
   };
 
   const submitExam = async (answers: Answer[], timeSpent: number) => {
@@ -124,9 +258,11 @@ export default function TakeExamPage() {
 
     setIsSubmitting(true);
     try {
+      const attempts = buildAttempts();
+      await trackingService.recordExerciseAttempts(attempts);
+      await trackingService.markSubmitted(examId, user.id);
+
       await examService.submitExam(examId, user.id, answers, timeSpent);
-      
-      // Leave live session
       await liveSessionService.removeStudentFromSession(examId, user.id);
 
       toast({
@@ -146,10 +282,10 @@ export default function TakeExamPage() {
     }
   };
 
-  const onSubmit = async (data: { answers: Record<string, string | number> }) => {
+  const onSubmit = async (data: AnswersForm) => {
     if (!exam || !user || !startTime) return;
 
-    const answers: Answer[] = exam.questions.map((q) => ({
+    const answers: Answer[] = exercises.map((q) => ({
       questionId: q.id,
       value: data.answers[q.id] || (q.type === "rating_scale" ? 5 : ""),
     }));
@@ -158,7 +294,14 @@ export default function TakeExamPage() {
     await submitExam(answers, timeSpent);
   };
 
-  if (!exam) {
+  useEffect(() => {
+    if (exam && totalExercises > 0) {
+      handleEnterExercise(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam, totalExercises]);
+
+  if (!exam || !currentExercise) {
     return (
       <Layout role="student">
         <div className="flex items-center justify-center h-64">
@@ -168,131 +311,206 @@ export default function TakeExamPage() {
     );
   }
 
+  const currentAnswerValue = watch(`answers.${currentExercise.id}`);
+  const isFirst = currentIndex === 0;
+  const isLast = currentIndex === totalExercises - 1;
+
+  const handleNext = async () => {
+    if (!isLast) {
+      await goToExercise(currentIndex + 1);
+    } else {
+      setShowConfirm(true);
+    }
+  };
+
+  const handlePrevious = async () => {
+    if (!isFirst) {
+      await goToExercise(currentIndex - 1);
+    }
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirm(false);
+    await handleSubmit(onSubmit)();
+  };
+
   return (
     <Layout role="student">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">{exam.title}</h1>
-            <p className="text-muted-foreground mt-2">{exam.description}</p>
+      <div className="flex flex-col min-h-[calc(100vh-4rem)]">
+        <div className="flex-1 flex flex-col gap-4">
+          {/* Progress bar */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">
+                Exercise {currentIndex + 1} of {totalExercises}
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted">
+              <div
+                className="h-2 rounded-full gradient-primary"
+                style={{ width: `${((currentIndex + 1) / totalExercises) * 100}%` }}
+              />
+            </div>
           </div>
-          {timeRemaining !== null && (
-            <Card className="border-2 border-orange-200">
-              <CardContent className="flex items-center gap-2 p-4">
-                <Clock className="h-5 w-5 text-orange-600" />
-                <span className="text-lg font-bold">
-                  {timeRemaining > 0 ? formatTime(timeRemaining) : "Time's up!"}
-                </span>
-              </CardContent>
-            </Card>
-          )}
+
+          {/* Exercise card */}
+          <Card className="flex-1 flex flex-col min-h-[60vh]">
+            <CardHeader>
+              <CardTitle className="text-lg">
+                Exercise {currentExercise.order}
+                {currentExercise.required && <span className="text-red-500 ml-1">*</span>}
+              </CardTitle>
+              <CardDescription className="text-base font-normal mt-2">
+                {currentExercise.text}
+              </CardDescription>
+              <CardDescription className="text-sm text-muted-foreground">
+                Type: {currentExercise.type.replace("_", " ")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col justify-start">
+              {currentExercise.type === "multiple_choice" && currentExercise.options && (
+                <div className="space-y-2">
+                  {currentExercise.options.map((option, optIndex) => (
+                    <label
+                      key={optIndex}
+                      className="flex items-center space-x-2 p-2 rounded border hover:bg-muted cursor-pointer"
+                    >
+                      <input
+                        type="radio"
+                        value={option}
+                        {...register(`answers.${currentExercise.id}`)}
+                        onChange={(e) => {
+                          setValue(`answers.${currentExercise.id}`, e.target.value);
+                          handleAnswerChange(currentExercise.id, currentIndex, e.target.value);
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <span>{option}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {currentExercise.type === "open_text" && (
+                <Textarea
+                  {...register(`answers.${currentExercise.id}`)}
+                  placeholder="Type your answer here..."
+                  rows={6}
+                  className="mt-2"
+                  onChange={(e) =>
+                    handleAnswerChange(currentExercise.id, currentIndex, e.target.value)
+                  }
+                />
+              )}
+
+              {currentExercise.type === "rating_scale" && (
+                <div className="space-y-2 mt-2 max-w-sm">
+                  <Label>Rate from 1 to 10</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="10"
+                    {...register(`answers.${currentExercise.id}`, { valueAsNumber: true })}
+                    placeholder="Enter a number between 1 and 10"
+                    onChange={(e) =>
+                      handleAnswerChange(
+                        currentExercise.id,
+                        currentIndex,
+                        Number(e.target.value)
+                      )
+                    }
+                  />
+                </div>
+              )}
+
+              {currentExercise.type === "likert_scale" && (
+                <div className="space-y-2 mt-2 max-w-sm">
+                  <Select
+                    value={currentAnswerValue?.toString() || ""}
+                    onValueChange={(value) => {
+                      setValue(`answers.${currentExercise.id}`, value);
+                      handleAnswerChange(currentExercise.id, currentIndex, value);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your response" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(currentExercise.options || [
+                        "Strongly Disagree",
+                        "Disagree",
+                        "Neutral",
+                        "Agree",
+                        "Strongly Agree",
+                      ]).map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {exam.questions.map((question, index) => {
-            const answerValue = watch(`answers.${question.id}`);
-
-            return (
-              <Card key={question.id}>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Question {index + 1}
-                    {question.required && <span className="text-red-500 ml-1">*</span>}
-                  </CardTitle>
-                  <CardDescription className="text-base font-normal mt-2">
-                    {question.text}
-                  </CardDescription>
-                  <CardDescription className="text-sm text-muted-foreground">
-                    Type: {question.type.replace("_", " ")}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {question.type === "multiple_choice" && question.options && (
-                    <div className="space-y-2">
-                      {question.options.map((option, optIndex) => (
-                        <label
-                          key={optIndex}
-                          className="flex items-center space-x-2 p-2 rounded border hover:bg-muted cursor-pointer"
-                        >
-                          <input
-                            type="radio"
-                            value={option}
-                            {...register(`answers.${question.id}`)}
-                            className="h-4 w-4"
-                          />
-                          <span>{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-
-                  {question.type === "open_text" && (
-                    <Textarea
-                      {...register(`answers.${question.id}`)}
-                      placeholder="Type your answer here..."
-                      rows={4}
-                    />
-                  )}
-
-                  {question.type === "rating_scale" && (
-                    <div className="space-y-2">
-                      <Label>Rate from 1 to 10</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="10"
-                        {...register(`answers.${question.id}`, { valueAsNumber: true })}
-                        placeholder="Enter a number between 1 and 10"
-                      />
-                    </div>
-                  )}
-
-                  {question.type === "likert_scale" && (
-                    <div className="space-y-2">
-                      <Select
-                        value={answerValue?.toString() || ""}
-                        onValueChange={(value) => setValue(`answers.${question.id}`, value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select your response" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(question.options || [
-                            "Strongly Disagree",
-                            "Disagree",
-                            "Neutral",
-                            "Agree",
-                            "Strongly Agree",
-                          ]).map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-
-          <div className="flex gap-4">
+        {/* Navigation bar */}
+        <div className="mt-6 border-t bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex items-center justify-between py-4 gap-4">
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.back()}
-              disabled={isSubmitting}
+              onClick={handlePrevious}
+              disabled={isFirst || isSubmitting}
             >
-              Cancel
+              Previous
             </Button>
-            <Button type="submit" className="gradient-primary" disabled={isSubmitting}>
+            <div className="flex-1 text-center text-sm text-muted-foreground">
+              You can move between exercises freely before submitting.
+            </div>
+            <Button
+              type="button"
+              className="gradient-primary"
+              disabled={isSubmitting}
+              onClick={handleNext}
+            >
               <Send className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Submitting..." : "Submit Exam"}
+              {isLast ? "Submit Exam" : "Next"}
             </Button>
           </div>
-        </form>
+        </div>
+
+        {showConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="w-full max-w-md rounded-lg bg-background p-6 shadow-lg">
+              <h2 className="text-lg font-semibold mb-2">Submit exam?</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Once you submit, you won&apos;t be able to change your answers.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => setShowConfirm(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className="gradient-primary"
+                  onClick={handleConfirmSubmit}
+                  disabled={isSubmitting}
+                >
+                  Confirm Submit
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
 }
+

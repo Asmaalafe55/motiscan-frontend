@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { examService } from "@/services/exam.service";
 import { liveSessionService } from "@/services/liveSession.service";
 import { studentService } from "@/services/student.service";
-import { Exam } from "@/types";
+import { trackingService } from "@/services/tracking.service";
+import { Exam, StudentExamSession } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useLiveSession } from "@/contexts/LiveSessionContext";
 import { Play, Square, Users, FileText, Clock } from "lucide-react";
@@ -21,6 +22,7 @@ export default function ExamDetailPage() {
   const [exam, setExam] = useState<Exam | null>(null);
   const [connectedStudents, setConnectedStudents] = useState<string[]>([]);
   const [studentNames, setStudentNames] = useState<Record<string, string>>({});
+  const [sessions, setSessions] = useState<StudentExamSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { refreshSession } = useLiveSession();
   const { toast } = useToast();
@@ -43,25 +45,31 @@ export default function ExamDetailPage() {
   useEffect(() => {
     if (!exam?.isLive) return;
 
-    const fetchStudents = async () => {
+    const fetchMonitoringData = async () => {
       const studentIds = await liveSessionService.getConnectedStudents(examId);
       setConnectedStudents(studentIds);
-      
-      // Fetch student names
-      const names: Record<string, string> = {};
-      await Promise.all(
-        studentIds.map(async (id) => {
-          const student = await studentService.getStudentById(id);
-          if (student) names[id] = student.name;
-        })
-      );
+
+      const [names, sessionData] = await Promise.all([
+        (async () => {
+          const n: Record<string, string> = {};
+          await Promise.all(
+            studentIds.map(async (id) => {
+              const student = await studentService.getStudentById(id);
+              if (student) n[id] = student.name;
+            })
+          );
+          return n;
+        })(),
+        trackingService.getStudentSessionsForExam(examId),
+      ]);
+
       setStudentNames(names);
-      
+      setSessions(sessionData);
       refreshSession(examId);
     };
 
-    fetchStudents();
-    const interval = setInterval(fetchStudents, 5000); // Poll every 5 seconds
+    fetchMonitoringData();
+    const interval = setInterval(fetchMonitoringData, 10000); // Poll every 10 seconds
 
     return () => clearInterval(interval);
   }, [exam?.isLive, examId, refreshSession]);
@@ -160,14 +168,14 @@ export default function ExamDetailPage() {
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">
-                  <strong>{exam.questions.length}</strong> questions
+                  <strong>{exam.questions.length}</strong> exercises
                 </span>
               </div>
               {exam.duration && (
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">
-                    <strong>{exam.duration}</strong> minutes
+                    <strong>{exam.duration}</strong> minutes (informational)
                   </span>
                 </div>
               )}
@@ -194,21 +202,113 @@ export default function ExamDetailPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Connected Students
+                  Live Monitoring
                 </CardTitle>
-                <CardDescription>Students currently viewing this exam</CardDescription>
+                <CardDescription>Who is online right now</CardDescription>
               </CardHeader>
               <CardContent>
                 {connectedStudents.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No students connected yet</p>
                 ) : (
-                  <div className="space-y-2">
-                    {connectedStudents.map((studentId) => (
-                      <div key={studentId} className="flex items-center gap-2 p-2 rounded bg-muted">
-                        <div className="h-2 w-2 rounded-full bg-green-500" />
-                        <span className="text-sm">{studentNames[studentId] || studentId}</span>
-                      </div>
-                    ))}
+                  <div className="space-y-4">
+                    {connectedStudents.map((studentId) => {
+                      const session = sessions.find((s) => s.studentId === studentId);
+                      const name = studentNames[studentId] || studentId;
+                      const startedAt = session ? new Date(session.startedAt) : null;
+                      const lastActivityAt = session ? new Date(session.lastActivityAt) : null;
+                      const now = new Date();
+                      const timeSinceStart =
+                        startedAt != null
+                          ? Math.floor((now.getTime() - startedAt.getTime()) / 60000)
+                          : null;
+                      const timeSinceLastActivity =
+                        lastActivityAt != null
+                          ? Math.floor((now.getTime() - lastActivityAt.getTime()) / 60000)
+                          : null;
+
+                      const statusLabel =
+                        session?.status === "submitted"
+                          ? "Submitted"
+                          : session?.status === "away"
+                          ? "Away"
+                          : "Online";
+
+                      const statusColor =
+                        session?.status === "submitted"
+                          ? "bg-blue-500"
+                          : session?.status === "away"
+                          ? "bg-yellow-400"
+                          : "bg-green-500";
+
+                      return (
+                        <div
+                          key={studentId}
+                          className="rounded-lg border p-3 flex flex-col gap-2 bg-muted/40"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-xs font-semibold text-white">
+                                {name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium">{name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {session
+                                    ? `Exercise ${session.currentExerciseIndex + 1} of ${
+                                        session.totalExercises
+                                      }`
+                                    : "Connecting..."}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="inline-flex items-center gap-1 text-xs">
+                                <span className={`h-2 w-2 rounded-full ${statusColor}`} />
+                                {statusLabel}
+                              </span>
+                              {timeSinceStart != null && (
+                                <span className="text-[11px] text-muted-foreground">
+                                  In exam: {Math.floor(timeSinceStart / 60)}h {timeSinceStart % 60}m
+                                </span>
+                              )}
+                              {timeSinceLastActivity != null && (
+                                <span className="text-[11px] text-muted-foreground">
+                                  Last activity: {timeSinceLastActivity}m ago
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {session && session.timeline.length > 0 && (
+                            <div className="mt-2 border-t pt-2">
+                              <div className="text-[11px] font-medium text-muted-foreground mb-1">
+                                Timeline
+                              </div>
+                              <div className="max-h-24 overflow-y-auto text-[11px] space-y-1">
+                                {session.timeline.slice(-5).map((event, idx) => (
+                                  <div key={`${event.timestamp}-${idx}`} className="flex gap-2">
+                                    <span className="text-muted-foreground">
+                                      {new Date(event.timestamp).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                      :
+                                    </span>
+                                    <span>
+                                      Exercise {event.exerciseIndex + 1} – {event.action}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -217,8 +317,8 @@ export default function ExamDetailPage() {
 
           <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle>Questions</CardTitle>
-              <CardDescription>Review all questions in this exam</CardDescription>
+              <CardTitle>Exercises</CardTitle>
+              <CardDescription>Review all exercises in this exam</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {exam.questions.map((question, index) => (
