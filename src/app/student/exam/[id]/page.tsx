@@ -51,6 +51,7 @@ export default function TakeExamPage() {
   const [metrics, setMetrics] = useState<Record<string, ExerciseMetrics>>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [autoSubmitted, setAutoSubmitted] = useState(false);
+  const [show30MinWarning, setShow30MinWarning] = useState(false);
   // Per-exercise tracking for the DIFFERENCES type (character count, edits, etc.)
   const [differencesTracking, setDifferencesTracking] = useState<
     Record<string, DifferencesTracking>
@@ -86,11 +87,22 @@ export default function TakeExamPage() {
           await trackingService.startStudentSession(examId, user.id, data.questions.length, started);
         }
 
-        const timeout = setTimeout(() => {
-          setAutoSubmitted(true);
-        }, 5 * 60 * 60 * 1000); // 5 hours
+        const FIVE_HOURS = 5 * 60 * 60 * 1000;
+        const THIRTY_MIN = 30 * 60 * 1000;
 
-        return () => clearTimeout(timeout);
+        const autoSubmitTimeout = setTimeout(() => {
+          setAutoSubmitted(true);
+        }, FIVE_HOURS);
+
+        // Show 30-minute warning at 4h30m
+        const warningTimeout = setTimeout(() => {
+          setShow30MinWarning(true);
+        }, FIVE_HOURS - THIRTY_MIN);
+
+        return () => {
+          clearTimeout(autoSubmitTimeout);
+          clearTimeout(warningTimeout);
+        };
       } catch (error) {
         console.error("Error fetching exam:", error);
       }
@@ -241,12 +253,15 @@ export default function TakeExamPage() {
         m.durationOnExercise ??
         Math.floor((timeLeft.getTime() - timeStarted.getTime()) / 1000);
 
+      const diffTracking = differencesTracking[q.id];
       return {
         examId,
         exerciseId: q.id,
         questionId: q.id,
         studentId: user.id,
+        exerciseType: q.type,
         timeStarted: timeStarted.toISOString(),
+        timeFirstAnswer: m.timeAnswered?.toISOString(),
         timeAnswered: m.timeAnswered?.toISOString(),
         timeLeft: timeLeft.toISOString(),
         durationOnExercise,
@@ -254,9 +269,10 @@ export default function TakeExamPage() {
         answerChanged: m.answerChanged,
         skipped: m.skipped && m.answerValue === undefined,
         revisited: m.revisited,
-        // Attach differences-type tracking if available
-        ...(differencesTracking[q.id]
-          ? { metadata: differencesTracking[q.id] as unknown as Record<string, unknown> }
+        charactersTyped: diffTracking?.charactersTyped,
+        editsCount: diffTracking?.editsCount,
+        ...(diffTracking
+          ? { metadata: diffTracking as unknown as Record<string, unknown> }
           : {}),
       };
     });
@@ -347,6 +363,22 @@ export default function TakeExamPage() {
     <Layout role="student">
       <div className="flex flex-col min-h-[calc(100vh-4rem)]">
         <div className="flex-1 flex flex-col gap-4">
+          {/* 30-minute warning banner */}
+          {show30MinWarning && (
+            <div className="flex items-center justify-between rounded-lg border border-yellow-400 bg-yellow-50 px-4 py-2.5">
+              <p className="text-sm font-medium text-yellow-800">
+                ⏳ You have 30 minutes remaining to complete this exam.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShow30MinWarning(false)}
+                className="text-yellow-600 hover:text-yellow-800 ml-4 text-xs underline flex-shrink-0"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {/* Progress bar */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">

@@ -25,7 +25,7 @@ interface SidebarProps {
 const teacherLinks = [
   { href: "/teacher/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/teacher/exams", label: "Exams", icon: FileText },
-  { href: "/teacher/exercise-library", label: "Exercise Library", icon: Library },
+  { href: "/teacher/exercises", label: "Exercise Library", icon: Library },
   { href: "/teacher/students", label: "Students", icon: Users },
   { href: "/teacher/reports", label: "Reports", icon: BarChart3 },
 ];

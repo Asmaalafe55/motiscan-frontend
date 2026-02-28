@@ -46,10 +46,15 @@ export interface Exam {
   title: string;
   description: string;
   teacherId: string;
+  teacherName?: string;
   createdAt: string;
   isLive: boolean;
   duration?: number; // in minutes
   questions: Question[];
+  /** Ordered list of library exercise IDs this exam was built from */
+  exerciseIds?: string[];
+  /** Students assigned to this exam */
+  assignedStudentIds?: string[];
 }
 
 export interface ExamSubmission {
@@ -95,6 +100,7 @@ export interface Exercise {
   instructions: string;
   content?: string;
   tags: string[];
+  createdAt: string;
   // Underlying question structure used in exams
   question: Question;
 }
@@ -116,14 +122,18 @@ export interface ExerciseAttempt {
   exerciseId: string;
   questionId: string;
   studentId: string;
+  exerciseType: QuestionType;
   timeStarted: string;
-  timeAnswered?: string;
+  timeFirstAnswer?: string;  // renamed from timeAnswered for clarity
+  timeAnswered?: string;     // kept for backward compatibility
   timeLeft?: string;
   durationOnExercise?: number; // in seconds
   answerValue?: string | number;
   answerChanged: boolean;
   skipped: boolean;
   revisited: boolean;
+  charactersTyped?: number;
+  editsCount?: number;
   // Optional exercise-type-specific tracking payload (e.g. DifferencesTracking)
   metadata?: Record<string, unknown>;
 }

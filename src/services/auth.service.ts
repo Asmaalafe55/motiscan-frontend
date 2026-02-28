@@ -2,6 +2,7 @@ import { User, UserRole } from "@/types";
 
 // Mock users database
 const mockUsers: User[] = [
+  // --- Teachers ---
   {
     id: "teacher1",
     email: "teacher1@motiscan.com",
@@ -16,6 +17,14 @@ const mockUsers: User[] = [
     role: "teacher",
     password: "teacher123",
   },
+  {
+    id: "noor",
+    email: "noor@test.com",
+    name: "Dr. Noor Salim",
+    role: "teacher",
+    password: "teacher123",
+  },
+  // --- Students ---
   {
     id: "student1",
     email: "student1@motiscan.com",
@@ -37,20 +46,43 @@ const mockUsers: User[] = [
     role: "student",
     password: "student123",
   },
+  {
+    id: "sara",
+    email: "sara@test.com",
+    name: "Sara Cohen",
+    role: "student",
+    password: "student123",
+  },
+  {
+    id: "ahmed",
+    email: "ahmed@test.com",
+    name: "Ahmed Khalil",
+    role: "student",
+    password: "student123",
+  },
+  {
+    id: "maya",
+    email: "maya@test.com",
+    name: "Maya Levi",
+    role: "student",
+    password: "student123",
+  },
+  {
+    id: "omar",
+    email: "omar@test.com",
+    name: "Omar Hassan",
+    role: "student",
+    password: "student123",
+  },
 ];
 
 export const authService = {
   login: async (email: string, password: string, role: UserRole): Promise<User | null> => {
-    // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 500));
-    
     const user = mockUsers.find(
       (u) => u.email === email && u.password === password && u.role === role
     );
-    
     if (!user) return null;
-    
-    // Remove password from returned user
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
   },
