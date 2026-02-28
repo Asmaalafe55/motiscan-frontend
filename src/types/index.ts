@@ -8,7 +8,17 @@ export interface User {
   password?: string; // Only for mock data
 }
 
-export type QuestionType = "multiple_choice" | "open_text" | "rating_scale" | "likert_scale";
+export type QuestionType =
+  | "multiple_choice"
+  | "open_text"
+  | "rating_scale"
+  | "likert_scale"
+  | "differences";
+
+export interface DifferenceImages {
+  image1Url: string;
+  image2Url: string;
+}
 
 export interface Question {
   id: string;
@@ -18,6 +28,17 @@ export interface Question {
   options?: string[]; // For multiple choice and likert
   required: boolean;
   order: number;
+  // For "differences" type
+  differenceImages?: DifferenceImages;
+  expectedAnswerNotes?: string; // Teacher-only context for AI
+}
+
+// AI tracking data specific to the DIFFERENCES exercise type
+export interface DifferencesTracking {
+  charactersTyped: number;
+  timeToFirstKeystroke?: number; // milliseconds from exercise load to first key
+  editsCount: number;            // number of deletion/correction events
+  finalAnswerText: string;
 }
 
 export interface Exam {
@@ -103,6 +124,8 @@ export interface ExerciseAttempt {
   answerChanged: boolean;
   skipped: boolean;
   revisited: boolean;
+  // Optional exercise-type-specific tracking payload (e.g. DifferencesTracking)
+  metadata?: Record<string, unknown>;
 }
 
 export interface ExerciseNavigationEvent {

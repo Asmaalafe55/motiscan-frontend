@@ -145,7 +145,7 @@ export default function LoginPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full gradient-primary" disabled={isLoading}>
+            <Button type="submit" variant="gradient" className="w-full" disabled={isLoading}>
               {isLoading ? "Logging in..." : "Login"}
             </Button>
 

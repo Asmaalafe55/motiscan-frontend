@@ -1,4 +1,5 @@
 import { Exam, Question, ExamSubmission, Answer } from "@/types";
+import { placeholderImages } from "@/lib/placeholder-images";
 
 // Mock exams database
 const mockExams: Exam[] = [
@@ -80,6 +81,20 @@ const mockExams: Exam[] = [
         text: "Rate your understanding of physics concepts (1-10)",
         required: true,
         order: 3,
+      },
+      {
+        id: "q8",
+        examId: "exam2",
+        type: "differences",
+        text: "Look carefully at both images of the living room. Find and describe all the differences you can see between Image 1 and Image 2.",
+        required: true,
+        order: 4,
+        differenceImages: {
+          image1Url: placeholderImages.room1A,
+          image2Url: placeholderImages.room1B,
+        },
+        expectedAnswerNotes:
+          "5 differences: sofa colour, lamp position, green painting, window divider, bookshelf vs plant.",
       },
     ],
   },

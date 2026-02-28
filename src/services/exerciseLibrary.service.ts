@@ -1,7 +1,55 @@
-import { Exercise, QuestionType, Question, Exam, ExamTemplate } from "@/types";
+import { Exercise, Question, Exam, ExamTemplate } from "@/types";
+import { placeholderImages } from "@/lib/placeholder-images";
 
 // Mock exercise library
 const mockExercises: Exercise[] = [
+  // --- DIFFERENCES exercises ---
+  {
+    id: "diff-ex1",
+    title: "Spot the Differences — Living Room",
+    type: "differences",
+    instructions:
+      "Look carefully at both images of the living room. Find and describe all the differences you can see between Image 1 and Image 2.",
+    content: "",
+    tags: ["visual", "differences", "observation"],
+    question: {
+      id: "diff-ex1-q",
+      examId: "",
+      type: "differences",
+      text: "Look carefully at both images of the living room. Find and describe all the differences you can see between Image 1 and Image 2.",
+      required: true,
+      order: 1,
+      differenceImages: {
+        image1Url: placeholderImages.room1A,
+        image2Url: placeholderImages.room1B,
+      },
+      expectedAnswerNotes:
+        "5 differences: (1) sofa colour changed from blue to red, (2) lamp moved from left to right side, (3) green painting removed from wall, (4) window lost its cross divider, (5) bookshelf replaced by a plant.",
+    },
+  },
+  {
+    id: "diff-ex2",
+    title: "Spot the Differences — Garden Scene",
+    type: "differences",
+    instructions:
+      "Examine both garden images carefully. Write down every difference you notice between the two pictures.",
+    content: "",
+    tags: ["visual", "differences", "observation", "nature"],
+    question: {
+      id: "diff-ex2-q",
+      examId: "",
+      type: "differences",
+      text: "Examine both garden images carefully. Write down every difference you notice between the two pictures.",
+      required: true,
+      order: 1,
+      differenceImages: {
+        image1Url: placeholderImages.garden2A,
+        image2Url: placeholderImages.garden2B,
+      },
+      expectedAnswerNotes:
+        "6 differences: (1) sun moved from top-right to top-left, (2) cloud removed, (3) door colour changed from red to blue, (4) tree removed from left side, (5) flowers changed from orange to purple, (6) two birds added to the sky.",
+    },
+  },
   {
     id: "ex1",
     title: "Algebra Confidence Check",

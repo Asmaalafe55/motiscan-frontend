@@ -92,7 +92,7 @@ export default function StudentDashboard() {
                     )}
                   </div>
                   <Button
-                    className="w-full gradient-primary"
+                    variant="gradient" className="w-full"
                     onClick={() => router.push(`/student/exam/${exam.id}`)}
                   >
                     <BookOpen className="h-4 w-4 mr-2" />

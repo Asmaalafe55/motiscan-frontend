@@ -151,7 +151,7 @@ export default function ExamDetailPage() {
                 Close Live Session
               </Button>
             ) : (
-              <Button onClick={handleOpenLiveSession} className="gradient-primary">
+              <Button onClick={handleOpenLiveSession} variant="gradient">
                 <Play className="h-4 w-4 mr-2" />
                 Open Live Session
               </Button>

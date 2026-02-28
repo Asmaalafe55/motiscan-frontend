@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Save } from "lucide-react";
 
 const questionSchema = z.object({
-  type: z.enum(["multiple_choice", "open_text", "rating_scale", "likert_scale"]),
+  type: z.enum(["multiple_choice", "open_text", "rating_scale", "likert_scale", "differences"]),
   text: z.string().min(1, "Question text is required"),
   options: z.array(z.string()).optional(),
   required: z.boolean(),
@@ -314,7 +314,7 @@ export default function CreateExamPage() {
             >
               Cancel
             </Button>
-            <Button type="submit" className="gradient-primary" disabled={isSubmitting}>
+            <Button type="submit" variant="gradient" disabled={isSubmitting}>
               <Save className="h-4 w-4 mr-2" />
               {isSubmitting ? "Creating..." : "Create Exam"}
             </Button>

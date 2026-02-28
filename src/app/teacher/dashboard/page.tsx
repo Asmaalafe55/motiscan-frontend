@@ -11,6 +11,7 @@ import { Users, FileText, BarChart3, Clock } from "lucide-react";
 export default function TeacherDashboard() {
   const [stats, setStats] = useState({
     totalStudents: 0,
+    totalExams: 0,
     activeExams: 0,
     pendingReports: 0,
   });
@@ -27,6 +28,7 @@ export default function TeacherDashboard() {
 
         setStats({
           totalStudents: students.length,
+          totalExams: exams.length,
           activeExams: exams.filter((e) => e.isLive).length,
           pendingReports: reports.length,
         });
@@ -87,7 +89,7 @@ export default function TeacherDashboard() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.activeExams}</div>
+              <div className="text-2xl font-bold">{stats.totalExams}</div>
               <p className="text-xs text-muted-foreground">Created exams</p>
             </CardContent>
           </Card>

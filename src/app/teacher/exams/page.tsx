@@ -51,7 +51,7 @@ export default function TeacherExamsPage() {
             <h1 className="text-3xl font-bold">Exams</h1>
             <p className="text-muted-foreground mt-2">Manage your exams and assessments</p>
           </div>
-          <Button onClick={() => router.push("/teacher/exams/create")} className="gradient-primary">
+          <Button onClick={() => router.push("/teacher/exams/create")} variant="gradient">
             <Plus className="h-4 w-4 mr-2" />
             Create New Exam
           </Button>
@@ -109,7 +109,7 @@ export default function TeacherExamsPage() {
               <FileText className="h-12 w-12 text-muted-foreground mb-4" />
               <p className="text-muted-foreground">No exams created yet</p>
               <Button
-                className="mt-4 gradient-primary"
+                variant="gradient" className="mt-4"
                 onClick={() => router.push("/teacher/exams/create")}
               >
                 Create Your First Exam

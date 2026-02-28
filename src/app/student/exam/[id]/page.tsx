@@ -19,9 +19,10 @@ import {
 import { examService } from "@/services/exam.service";
 import { liveSessionService } from "@/services/liveSession.service";
 import { trackingService } from "@/services/tracking.service";
-import { Exam, Answer, ExerciseAttempt } from "@/types";
+import { Exam, Answer, ExerciseAttempt, DifferencesTracking } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { DifferencesExercise } from "@/components/exercises/DifferencesExercise";
 import { Send } from "lucide-react";
 
 type AnswersForm = { answers: Record<string, string | number> };
@@ -50,6 +51,10 @@ export default function TakeExamPage() {
   const [metrics, setMetrics] = useState<Record<string, ExerciseMetrics>>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [autoSubmitted, setAutoSubmitted] = useState(false);
+  // Per-exercise tracking for the DIFFERENCES type (character count, edits, etc.)
+  const [differencesTracking, setDifferencesTracking] = useState<
+    Record<string, DifferencesTracking>
+  >({});
 
   const { register, handleSubmit, watch, setValue } = useForm<AnswersForm>({
     defaultValues: { answers: {} },
@@ -249,6 +254,10 @@ export default function TakeExamPage() {
         answerChanged: m.answerChanged,
         skipped: m.skipped && m.answerValue === undefined,
         revisited: m.revisited,
+        // Attach differences-type tracking if available
+        ...(differencesTracking[q.id]
+          ? { metadata: differencesTracking[q.id] as unknown as Record<string, unknown> }
+          : {}),
       };
     });
   };
@@ -347,7 +356,7 @@ export default function TakeExamPage() {
             </div>
             <div className="h-2 w-full rounded-full bg-muted">
               <div
-                className="h-2 rounded-full gradient-primary"
+                className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-purple-600"
                 style={{ width: `${((currentIndex + 1) / totalExercises) * 100}%` }}
               />
             </div>
@@ -360,12 +369,12 @@ export default function TakeExamPage() {
                 Exercise {currentExercise.order}
                 {currentExercise.required && <span className="text-red-500 ml-1">*</span>}
               </CardTitle>
-              <CardDescription className="text-base font-normal mt-2">
-                {currentExercise.text}
-              </CardDescription>
-              <CardDescription className="text-sm text-muted-foreground">
-                Type: {currentExercise.type.replace("_", " ")}
-              </CardDescription>
+              {/* For differences exercises the instructions are rendered inside the component */}
+              {currentExercise.type !== "differences" && (
+                <CardDescription className="text-base font-normal mt-2">
+                  {currentExercise.text}
+                </CardDescription>
+              )}
             </CardHeader>
             <CardContent className="flex-1 flex flex-col justify-start">
               {currentExercise.type === "multiple_choice" && currentExercise.options && (
@@ -451,6 +460,25 @@ export default function TakeExamPage() {
                   </Select>
                 </div>
               )}
+
+              {currentExercise.type === "differences" &&
+                currentExercise.differenceImages && (
+                  <DifferencesExercise
+                    instructions={currentExercise.text}
+                    images={currentExercise.differenceImages}
+                    value={(currentAnswerValue as string) || ""}
+                    onChange={(val) => {
+                      setValue(`answers.${currentExercise.id}`, val);
+                      handleAnswerChange(currentExercise.id, currentIndex, val);
+                    }}
+                    onTrackingUpdate={(tracking) => {
+                      setDifferencesTracking((prev) => ({
+                        ...prev,
+                        [currentExercise.id]: tracking,
+                      }));
+                    }}
+                  />
+                )}
             </CardContent>
           </Card>
         </div>
@@ -471,7 +499,7 @@ export default function TakeExamPage() {
             </div>
             <Button
               type="button"
-              className="gradient-primary"
+              variant="gradient"
               disabled={isSubmitting}
               onClick={handleNext}
             >
@@ -499,7 +527,7 @@ export default function TakeExamPage() {
                 </Button>
                 <Button
                   type="button"
-                  className="gradient-primary"
+                  variant="gradient"
                   onClick={handleConfirmSubmit}
                   disabled={isSubmitting}
                 >

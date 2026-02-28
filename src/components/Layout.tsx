@@ -14,36 +14,56 @@ interface LayoutProps {
 }
 
 export function Layout({ children, role }: LayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [isRTL, setIsRTL] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
-    if (!user || user.role !== role) {
+    // Only redirect once auth check is complete
+    if (!authLoading && (!user || user.role !== role)) {
       router.push("/login");
     }
-  }, [user, role, router]);
+  }, [user, role, router, authLoading]);
+
+  // Show a full-screen loader while auth resolves — avoids flash / redirect race
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.role !== role) {
+    return null;
+  }
 
   const handleLogout = async () => {
     await logout();
     router.push("/login");
   };
 
-  if (!user || user.role !== role) {
-    return null;
-  }
-
   return (
     <div className="flex min-h-screen" dir={isRTL ? "rtl" : "ltr"}>
-      <Sidebar role={role} />
-      <div className="flex-1 ml-64 rtl:ml-0 rtl:mr-64">
+      <Sidebar
+        role={role}
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+      />
+      {/* Main area shifts based on real sidebar width */}
+      <div
+        className="flex-1 transition-all duration-300"
+        style={{ marginInlineStart: sidebarCollapsed ? "4rem" : "16rem" }}
+      >
         <header className="sticky top-0 z-30 w-full border-b bg-white shadow-sm">
           <div className="flex h-16 items-center justify-between px-6">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Welcome, {user.name}
-              </h1>
-            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Welcome, {user.name}
+            </h1>
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
