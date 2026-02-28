@@ -5,8 +5,50 @@ import {
   StudentStatus,
 } from "@/types";
 
-// In-memory tracking for mock implementation
-const exerciseAttempts: ExerciseAttempt[] = [];
+// ---------------------------------------------------------------------------
+// Pre-seeded exercise attempts so reports have real data to analyse
+// ---------------------------------------------------------------------------
+const exerciseAttempts: ExerciseAttempt[] = [
+  // student1 — exam1 (Math Assessment)
+  {
+    examId: "exam1", exerciseId: "q1", questionId: "q1",
+    studentId: "student1", exerciseType: "multiple_choice",
+    timeStarted: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    timeAnswered: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 45000).toISOString(),
+    timeLeft:    new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 90000).toISOString(),
+    durationOnExercise: 90,
+    answerValue: "x = 4", answerChanged: false, skipped: false, revisited: false,
+  },
+  {
+    examId: "exam1", exerciseId: "q2", questionId: "q2",
+    studentId: "student1", exerciseType: "open_text",
+    timeStarted: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 90000).toISOString(),
+    timeAnswered: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 300000).toISOString(),
+    timeLeft:    new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 420000).toISOString(),
+    durationOnExercise: 330, charactersTyped: 68, editsCount: 2,
+    answerValue: "I would add 7 to both sides, then divide by 3",
+    answerChanged: true, skipped: false, revisited: false,
+    timeToFirstKeystroke: 2800,
+  },
+  {
+    examId: "exam1", exerciseId: "q3", questionId: "q3",
+    studentId: "student1", exerciseType: "rating_scale",
+    timeStarted: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 420000).toISOString(),
+    timeAnswered: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 450000).toISOString(),
+    timeLeft:    new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 510000).toISOString(),
+    durationOnExercise: 90, answerValue: 8,
+    answerChanged: false, skipped: false, revisited: false,
+  },
+  {
+    examId: "exam1", exerciseId: "q4", questionId: "q4",
+    studentId: "student1", exerciseType: "likert_scale",
+    timeStarted: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 510000).toISOString(),
+    timeAnswered: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 540000).toISOString(),
+    timeLeft:    new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 600000).toISOString(),
+    durationOnExercise: 90, answerValue: "Agree",
+    answerChanged: false, skipped: false, revisited: true,
+  },
+];
 
 // examId -> (studentId -> session)
 const studentSessions: Map<string, Map<string, StudentExamSession>> = new Map();
@@ -86,6 +128,31 @@ const examASessions = new Map<string, StudentExamSession>([
 ]);
 
 studentSessions.set("examA", examASessions);
+
+// student1 in exam1 — already submitted (pre-seeded for demo)
+const exam1Student1Start = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+studentSessions.set(
+  "exam1",
+  new Map([
+    [
+      "student1",
+      {
+        examId: "exam1",
+        studentId: "student1",
+        startedAt: exam1Student1Start,
+        lastActivityAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 600000).toISOString(),
+        status: "submitted",
+        currentExerciseIndex: 3,
+        totalExercises: 4,
+        timeline: [
+          { exerciseId: "q1", exerciseIndex: 0, timestamp: exam1Student1Start, action: "enter" },
+          { exerciseId: "q1", exerciseIndex: 0, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 90000).toISOString(), action: "answer" },
+          { exerciseId: "q4", exerciseIndex: 3, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 580000).toISOString(), action: "submit" },
+        ],
+      },
+    ],
+  ])
+);
 
 // ---------------------------------------------------------------------------
 // Helpers

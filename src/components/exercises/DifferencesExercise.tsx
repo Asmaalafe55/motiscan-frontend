@@ -37,21 +37,33 @@ export function DifferencesExercise({
   // Previous text length used to detect deletions (edits)
   const prevLengthRef = useRef<number>(value.length);
 
-  const updateTracking = useCallback(
-    (patch: Partial<DifferencesTracking>) => {
-      setTracking((prev) => {
-        const next = { ...prev, ...patch };
-        onTrackingUpdate(next);
-        return next;
-      });
-    },
-    [onTrackingUpdate]
-  );
+  const updateTracking = useCallback((patch: Partial<DifferencesTracking>) => {
+    setTracking((prev) => ({ ...prev, ...patch }));
+  }, []);
 
   // Sync character count + finalAnswerText whenever value changes from the outside
   useEffect(() => {
     updateTracking({ charactersTyped: value.length, finalAnswerText: value });
   }, [value, updateTracking]);
+
+  // Propagate tracking changes to the parent only when the value genuinely changes,
+  // skipping the initial render to avoid triggering a state update during render.
+  const isFirstRender = useRef(true);
+  const prevTrackingRef = useRef(tracking);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (prevTrackingRef.current !== tracking) {
+      prevTrackingRef.current = tracking;
+      onTrackingUpdate(tracking);
+    }
+    // onTrackingUpdate is intentionally excluded — adding it would recreate
+    // this effect on every parent render and restart the loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tracking]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
@@ -62,7 +74,7 @@ export function DifferencesExercise({
       const isFirstKeystroke = prev.timeToFirstKeystroke === undefined && newLen > 0;
       const isEdit = newLen < prevLen; // deletion / backspace
 
-      const next: DifferencesTracking = {
+      return {
         ...prev,
         charactersTyped: newLen,
         timeToFirstKeystroke: isFirstKeystroke
@@ -71,8 +83,6 @@ export function DifferencesExercise({
         editsCount: isEdit ? prev.editsCount + 1 : prev.editsCount,
         finalAnswerText: newText,
       };
-      onTrackingUpdate(next);
-      return next;
     });
 
     prevLengthRef.current = newLen;

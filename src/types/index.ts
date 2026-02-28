@@ -134,6 +134,7 @@ export interface ExerciseAttempt {
   revisited: boolean;
   charactersTyped?: number;
   editsCount?: number;
+  timeToFirstKeystroke?: number; // ms from exercise load to first keystroke (differences exercises)
   // Optional exercise-type-specific tracking payload (e.g. DifferencesTracking)
   metadata?: Record<string, unknown>;
 }

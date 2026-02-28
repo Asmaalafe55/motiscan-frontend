@@ -13,7 +13,7 @@ import { studentService } from "@/services/student.service";
 import { useExamSession } from "@/hooks/useExamSession";
 import { ExercisePreviewModal } from "@/components/exercises/ExercisePreviewModal";
 import { exerciseLibraryService } from "@/services/exerciseLibrary.service";
-import type { Exam, Exercise, User } from "@/types";
+import type { Exam, Exercise, ExamSubmission, User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useLiveSession } from "@/contexts/LiveSessionContext";
 import {
@@ -27,6 +27,7 @@ import {
   Users,
   Star,
   SlidersHorizontal,
+  BarChart2,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -81,6 +82,8 @@ export default function ExamDetailPage() {
   const [assignedStudents, setAssignedStudents] = useState<User[]>([]);
   const [libraryExercises, setLibraryExercises] = useState<Record<string, Exercise>>({});
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
+  const [submissions, setSubmissions] = useState<ExamSubmission[]>([]);
+  const [reportLoadingFor, setReportLoadingFor] = useState<string | null>(null);
 
   // Live session hook (auto-polls every 10s when isLive)
   const { connectedStudentIds, sessions, studentNames } = useExamSession(
@@ -107,6 +110,10 @@ export default function ExamDetailPage() {
           exs.forEach((e) => { map[e.id] = e; });
           setLibraryExercises(map);
         }
+
+        // Load submissions so we know which students have submitted
+        const subs = await examService.getSubmissionsForExam(examId);
+        setSubmissions(subs);
       } catch (err) {
         console.error(err);
       } finally {
@@ -165,6 +172,15 @@ export default function ExamDetailPage() {
       </Layout>
     );
   }
+
+  // ---- Students who have a submission ----
+  const submittedStudentIds = new Set(submissions.map((s) => s.studentId));
+
+  const handleGetReport = async (studentId: string) => {
+    setReportLoadingFor(studentId);
+    // Navigate — the report page itself shows the 2-second AI loading state
+    router.push(`/teacher/reports/exam/${examId}/${studentId}`);
+  };
 
   // ---- Derive which students are online vs offline ----
   const onlineSet = new Set(connectedStudentIds);
@@ -405,6 +421,22 @@ export default function ExamDetailPage() {
                               </div>
                             </div>
                           )}
+
+                          {/* Get Report button — shown for submitted students */}
+                          {(session?.status === "submitted" || submittedStudentIds.has(sid)) && (
+                            <div className="border-t pt-2">
+                              <Button
+                                size="sm"
+                                variant="gradient"
+                                className="w-full h-7 text-xs"
+                                disabled={reportLoadingFor === sid}
+                                onClick={() => handleGetReport(sid)}
+                              >
+                                <BarChart2 className="h-3.5 w-3.5 mr-1.5" />
+                                {reportLoadingFor === sid ? "Opening…" : "Get AI Report"}
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -413,7 +445,51 @@ export default function ExamDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Section B — Assigned but offline */}
+            {/* Section B — Submitted students (always shown when there are submissions) */}
+            {submissions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <BarChart2 className="h-4 w-4 text-blue-600" />
+                    Submitted — AI Reports Available
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {submissions.map((sub) => {
+                    const student = assignedStudents.find((s) => s.id === sub.studentId);
+                    const name = student?.name ?? sub.studentId;
+                    return (
+                      <div
+                        key={sub.id}
+                        className="flex items-center gap-2.5 rounded-lg border p-2.5 bg-blue-50/50"
+                      >
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0">
+                          {name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{name}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Submitted {format(new Date(sub.submittedAt), "MMM d 'at' h:mm a")}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="gradient"
+                          className="h-7 text-xs flex-shrink-0"
+                          disabled={reportLoadingFor === sub.studentId}
+                          onClick={() => handleGetReport(sub.studentId)}
+                        >
+                          <BarChart2 className="h-3.5 w-3.5 mr-1.5" />
+                          {reportLoadingFor === sub.studentId ? "Opening…" : "Get Report"}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Section C — Assigned but offline */}
             {exam.isLive && offlineStudents.length > 0 && (
               <Card>
                 <CardHeader>
@@ -440,9 +516,23 @@ export default function ExamDetailPage() {
                               : "Not started"}
                           </p>
                         </div>
-                        <Badge variant="secondary" className="text-[10px]">
-                          Offline
-                        </Badge>
+                        <div className="flex flex-col items-end gap-1.5">
+                          <Badge variant="secondary" className="text-[10px]">
+                            Offline
+                          </Badge>
+                          {submittedStudentIds.has(student.id) && (
+                            <Button
+                              size="sm"
+                              variant="gradient"
+                              className="h-6 text-[10px] px-2"
+                              disabled={reportLoadingFor === student.id}
+                              onClick={() => handleGetReport(student.id)}
+                            >
+                              <BarChart2 className="h-3 w-3 mr-1" />
+                              {reportLoadingFor === student.id ? "Opening…" : "Get Report"}
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}

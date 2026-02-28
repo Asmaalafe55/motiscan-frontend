@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Layout } from "@/components/Layout";
@@ -326,6 +326,20 @@ export default function TakeExamPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exam, totalExercises]);
 
+  // Stable callback — only recreated when the current exercise changes.
+  // Using a stable reference prevents DifferencesExercise from seeing a new
+  // prop function on every render, which was the root cause of the infinite loop.
+  const handleTrackingUpdate = useCallback(
+    (tracking: DifferencesTracking) => {
+      setDifferencesTracking((prev) => ({
+        ...prev,
+        [currentExercise?.id ?? ""]: tracking,
+      }));
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentExercise?.id]
+  );
+
   if (!exam || !currentExercise) {
     return (
       <Layout role="student">
@@ -503,12 +517,7 @@ export default function TakeExamPage() {
                       setValue(`answers.${currentExercise.id}`, val);
                       handleAnswerChange(currentExercise.id, currentIndex, val);
                     }}
-                    onTrackingUpdate={(tracking) => {
-                      setDifferencesTracking((prev) => ({
-                        ...prev,
-                        [currentExercise.id]: tracking,
-                      }));
-                    }}
+                    onTrackingUpdate={handleTrackingUpdate}
                   />
                 )}
             </CardContent>
