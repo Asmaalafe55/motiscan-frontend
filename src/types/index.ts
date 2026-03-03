@@ -116,6 +116,26 @@ export interface ExamTemplate {
 
 export type StudentStatus = "online" | "away" | "submitted";
 
+// ---------------------------------------------------------------------------
+// Exercise psychological measures
+// ---------------------------------------------------------------------------
+
+/** The psychological / cognitive dimensions that exercises can measure. */
+export type MeasureDimension =
+  | "attention"
+  | "analytical_engagement"
+  | "rule_compliance"
+  | "effort"
+  | "confidence"
+  | "emotional_state"
+  | "self_expression_depth"
+  | "self_awareness"
+  | "honesty_indicators"
+  | "cognitive_persistence"
+  | "thoroughness"
+  | "creativity"
+  | "risk_taking";
+
 // Tracking per-exercise attempts
 export interface ExerciseAttempt {
   examId: string;

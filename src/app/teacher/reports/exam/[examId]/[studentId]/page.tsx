@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { examService } from "@/services/exam.service";
 import { studentService } from "@/services/student.service";
 import { trackingService } from "@/services/tracking.service";
-import { aiReportService, AIReport } from "@/services/aiReportService";
+import { aiReportService, AIReport, ScoreAttribution, AttributionEntry } from "@/services/aiReportService";
+import type { MeasureDimension } from "@/types";
 import { Exam, User } from "@/types";
 import { ArrowLeft, Printer, Brain } from "lucide-react";
 import { format } from "date-fns";
@@ -89,6 +90,109 @@ function fmtSeconds(s: number) {
   const m = Math.floor(s / 60);
   const sec = s % 60;
   return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+}
+
+// ---------------------------------------------------------------------------
+// Measure dimension badge colors
+// ---------------------------------------------------------------------------
+const MEASURE_COLORS: Record<MeasureDimension, string> = {
+  attention:             "bg-blue-50 text-blue-700 border-blue-200",
+  analytical_engagement: "bg-blue-50 text-blue-700 border-blue-200",
+  cognitive_persistence: "bg-cyan-50 text-cyan-700 border-cyan-200",
+  thoroughness:          "bg-teal-50 text-teal-700 border-teal-200",
+  confidence:            "bg-purple-50 text-purple-700 border-purple-200",
+  rule_compliance:       "bg-violet-50 text-violet-700 border-violet-200",
+  self_awareness:        "bg-purple-50 text-purple-700 border-purple-200",
+  honesty_indicators:    "bg-indigo-50 text-indigo-700 border-indigo-200",
+  effort:                "bg-green-50 text-green-700 border-green-200",
+  emotional_state:       "bg-amber-50 text-amber-700 border-amber-200",
+  self_expression_depth: "bg-orange-50 text-orange-700 border-orange-200",
+  creativity:            "bg-pink-50 text-pink-700 border-pink-200",
+  risk_taking:           "bg-rose-50 text-rose-700 border-rose-200",
+};
+
+// ---------------------------------------------------------------------------
+// Measure badge chip component
+// ---------------------------------------------------------------------------
+function MeasureBadge({ m }: { m: MeasureDimension }) {
+  const colors = MEASURE_COLORS[m] ?? "bg-gray-50 text-gray-600 border-gray-200";
+  return (
+    <span
+      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none ${colors}`}
+    >
+      {m.replace(/_/g, "\u00a0")}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Indicator icon
+// ---------------------------------------------------------------------------
+function IndicatorIcon({ indicator }: { indicator: AttributionEntry["indicator"] }) {
+  if (indicator === "positive") return <span title="Positive signal">✅</span>;
+  if (indicator === "warning")  return <span title="Moderate / mixed signal">⚠️</span>;
+  return <span title="Low / missing signal">🔴</span>;
+}
+
+// ---------------------------------------------------------------------------
+// Score Attribution card
+// ---------------------------------------------------------------------------
+function ScoreAttributionCard({ attr }: { attr: ScoreAttribution }) {
+  return (
+    <div className="rounded-xl border bg-white overflow-hidden">
+      {/* Card header */}
+      <div
+        className="flex items-center justify-between px-5 py-3"
+        style={{ borderLeft: `4px solid ${attr.color}` }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: attr.color }} />
+          <span className="text-sm font-bold uppercase tracking-wide text-gray-800">
+            {attr.scoreName}
+          </span>
+        </div>
+        <span className="text-lg font-extrabold tabular-nums" style={{ color: attr.color }}>
+          {attr.score}
+          <span className="text-xs font-normal text-gray-400">/100</span>
+        </span>
+      </div>
+
+      {/* Entries */}
+      {attr.entries.length === 0 ? (
+        <p className="px-5 py-3 text-xs text-gray-400 italic">No specific exercises target this dimension.</p>
+      ) : (
+        <div className="divide-y divide-gray-50">
+          {attr.entries.map((entry, i) => (
+            <div key={i} className="px-5 py-3 flex gap-3">
+              {/* Left: exercise label + indicator */}
+              <div className="flex-shrink-0 flex flex-col items-center gap-1 pt-0.5">
+                <span className="h-6 w-6 rounded-full bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-600">
+                  {entry.exerciseOrder}
+                </span>
+                <IndicatorIcon indicator={entry.indicator} />
+              </div>
+
+              {/* Right: details */}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-gray-700 mb-1">
+                  Exercise {entry.exerciseOrder} ·{" "}
+                  <span className="font-normal text-gray-500">{formatType(entry.exerciseType)}</span>
+                </p>
+                {/* Measure badges */}
+                <div className="flex flex-wrap gap-1 mb-1.5">
+                  <span className="text-[10px] text-gray-400 self-center mr-0.5">Measures:</span>
+                  {entry.measures.map((m) => (
+                    <MeasureBadge key={m} m={m} />
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 leading-snug">{entry.explanation}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -308,6 +412,25 @@ export default function AIReportPage() {
             </div>
           </div>
 
+          {/* ── Score Breakdown ── */}
+          {report.scoreAttributions.length > 0 && (
+            <div className="print-card rounded-2xl border bg-white shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b">
+                <h2 className="text-base font-bold text-gray-800">
+                  Score Breakdown — Where Each Score Came From
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Which exercises contributed to each motivation dimension and why
+                </p>
+              </div>
+              <div className="p-4 grid gap-4 sm:grid-cols-2">
+                {report.scoreAttributions.map((attr) => (
+                  <ScoreAttributionCard key={attr.scoreKey} attr={attr} />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── AI Summary ── */}
           <div className="print-card rounded-2xl border bg-white p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
@@ -329,6 +452,7 @@ export default function AIReportPage() {
                     <tr className="bg-gray-50 text-left">
                       <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">#</th>
                       <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Measures</th>
                       <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Time Spent</th>
                       <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Answer Length</th>
                       <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Edits</th>
@@ -339,8 +463,19 @@ export default function AIReportPage() {
                     {report.exerciseBreakdown.map((ex) => (
                       <tr key={ex.exerciseId} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 font-medium text-gray-700">{ex.order}</td>
-                        <td className="px-4 py-3 text-gray-600">{formatType(ex.type)}</td>
-                        <td className="px-4 py-3 text-gray-600">{fmtSeconds(ex.durationSeconds)}</td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatType(ex.type)}</td>
+                        <td className="px-4 py-3">
+                          {ex.measures.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {ex.measures.map((m) => (
+                                <MeasureBadge key={m} m={m as MeasureDimension} />
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtSeconds(ex.durationSeconds)}</td>
                         <td className="px-4 py-3 text-gray-600">
                           {ex.answerLength > 0 ? `${ex.answerLength} chars` : "—"}
                         </td>
