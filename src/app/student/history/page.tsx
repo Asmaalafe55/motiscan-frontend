@@ -1,21 +1,121 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { examService } from "@/services/exam.service";
 import { ExamSubmission, Exam } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { BarChart3, BookOpen, Calendar, Clock } from "lucide-react";
+import { BookOpen, Calendar, Clock, Eye, FileText, X } from "lucide-react";
 import { format } from "date-fns";
 
+// ---------------------------------------------------------------------------
+// Read-only view modal
+// ---------------------------------------------------------------------------
+interface ViewModalProps {
+  submission: ExamSubmission & { exam?: Exam };
+  onClose: () => void;
+}
+
+function ViewModal({ submission, onClose }: ViewModalProps) {
+  const exam = submission.exam;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-white" />
+            <h2 className="text-base font-semibold text-white truncate">
+              {exam?.title ?? "Exam Details"}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 text-white/80 hover:text-white hover:bg-white/20 transition-colors flex-shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto p-6 space-y-5 flex-1">
+          {/* Meta info */}
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-4 w-4 flex-shrink-0" />
+              <span>
+                Submitted {format(new Date(submission.submittedAt), "MMM d, yyyy 'at' h:mm a")}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-4 w-4 flex-shrink-0" />
+              <span>Time spent: {Math.floor(submission.timeSpent / 60)} min</span>
+            </div>
+          </div>
+
+          {/* Answers */}
+          {exam && exam.questions.length > 0 && (
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-gray-700">Your Answers</p>
+              {exam.questions.map((question, idx) => {
+                const answer = submission.answers.find(
+                  (a) => a.questionId === question.id
+                );
+                const answerText = answer?.value
+                  ? String(answer.value)
+                  : "No answer submitted";
+
+                return (
+                  <div key={question.id} className="rounded-lg border bg-gray-50 p-4 space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Exercise {idx + 1}
+                    </p>
+                    <p className="text-sm text-gray-700 leading-snug line-clamp-2">
+                      {question.text}
+                    </p>
+                    <div className="rounded-md bg-white border px-3 py-2">
+                      <p className="text-xs text-muted-foreground mb-0.5">Your answer:</p>
+                      <p className="text-sm text-gray-800 leading-relaxed">
+                        {answerText}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t bg-gray-50 flex-shrink-0">
+          <Button variant="outline" className="w-full" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 export default function StudentHistoryPage() {
-  const router = useRouter();
   const { user } = useAuth();
   const [submissions, setSubmissions] = useState<(ExamSubmission & { exam?: Exam })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [viewingSubmission, setViewingSubmission] = useState<
+    (ExamSubmission & { exam?: Exam }) | null
+  >(null);
 
   useEffect(() => {
     const fetchSubmissions = async () => {
@@ -88,7 +188,9 @@ export default function StudentHistoryPage() {
                   <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="h-4 w-4 flex-shrink-0" />
-                      <span>{format(new Date(submission.submittedAt), "MMM d, yyyy 'at' h:mm a")}</span>
+                      <span>
+                        {format(new Date(submission.submittedAt), "MMM d, yyyy 'at' h:mm a")}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Clock className="h-4 w-4 flex-shrink-0" />
@@ -99,12 +201,10 @@ export default function StudentHistoryPage() {
                   <Button
                     variant="outline"
                     className="gap-2"
-                    onClick={() =>
-                      router.push(`/teacher/reports/${user!.id}/${submission.examId}`)
-                    }
+                    onClick={() => setViewingSubmission(submission)}
                   >
-                    <BarChart3 className="h-4 w-4" />
-                    View Report
+                    <Eye className="h-4 w-4" />
+                    View Submission
                   </Button>
                 </CardContent>
               </Card>
@@ -112,6 +212,14 @@ export default function StudentHistoryPage() {
           </div>
         )}
       </div>
+
+      {/* Read-only view modal */}
+      {viewingSubmission && (
+        <ViewModal
+          submission={viewingSubmission}
+          onClose={() => setViewingSubmission(null)}
+        />
+      )}
     </Layout>
   );
 }
