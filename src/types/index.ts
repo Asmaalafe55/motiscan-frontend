@@ -17,12 +17,66 @@ export type QuestionType =
   | "open_text"
   | "rating_scale"
   | "likert_scale"
-  | "differences";
+  | "differences"
+  | "shape_copy";
 
 export interface DifferenceImages {
   image1Url: string;
   image2Url: string;
 }
+
+// ---------------------------------------------------------------------------
+// SHAPE_COPY exercise types (declared before Question so Question can reference them)
+// ---------------------------------------------------------------------------
+
+export type ShapeCopyRule = "shape" | "size" | "color" | "number";
+
+export interface DrawnShapeData {
+  shape_type: string;       // "rect" | "circle" | "triangle" | "diamond" | "arrow" | "line" | "freehand"
+  fill_color: string;
+  border_color: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  drawn_order: number;
+}
+
+/** Tracking payload per figure (A or B) per row */
+export interface ShapeCopyFigureTracking {
+  row_number: number;
+  figure: "A" | "B";
+  canvas_snapshot: string;         // base64 image of final canvas
+  shapes_data: DrawnShapeData[];
+  time_started: string;            // ISO timestamp
+  time_first_shape_drawn?: string; // ISO timestamp — engagement indicator
+  total_shapes_drawn: number;
+  shapes_deleted: number;          // effort/revision indicator
+  shapes_moved: number;            // refinement indicator
+  undo_count: number;              // confidence indicator
+  redo_count: number;
+  time_spent_seconds: number;
+  required_rules: ShapeCopyRule[];
+}
+
+/** Full tracking payload for a SHAPE_COPY exercise */
+export interface ShapeCopyTracking {
+  figures: ShapeCopyFigureTracking[];
+}
+
+/** One row inside a SHAPE_COPY exercise */
+export interface ShapeCopyRow {
+  row_number: number;
+  model_snapshot: string;  // base64 or SVG data URI for the model shape
+  figureA_rules: { rule: ShapeCopyRule; required: boolean }[];
+  figureB_rules: { rule: ShapeCopyRule; required: boolean }[];
+  teacher_notes?: string;  // hidden from student, used as AI context
+}
+
+/** Question-level config for SHAPE_COPY exercises */
+export interface ShapeCopyConfig {
+  rows: ShapeCopyRow[];
+}
+
+// ---------------------------------------------------------------------------
 
 export interface Question {
   id: string;
@@ -35,6 +89,8 @@ export interface Question {
   // For "differences" type
   differenceImages?: DifferenceImages;
   expectedAnswerNotes?: string; // Teacher-only context for AI
+  // For "shape_copy" type
+  shapeCopyConfig?: ShapeCopyConfig;
 }
 
 // AI tracking data specific to the DIFFERENCES exercise type

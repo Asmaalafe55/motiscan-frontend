@@ -121,6 +121,17 @@ function computeConfidence(attempts: ExerciseAttempt[]): number {
     if (a.answerChanged) s -= 12;
     if (a.revisited) s -= 8;
     if ((a.editsCount ?? 0) > 5) s -= 10;
+
+    // SHAPE_COPY: undo_count reduces confidence
+    if (a.exerciseType === "shape_copy") {
+      const meta = a.metadata as { figures?: Array<{ undo_count?: number; shapes_deleted?: number }> } | undefined;
+      const undos = (meta?.figures ?? []).reduce((sum, f) => sum + (f.undo_count ?? 0), 0);
+      const deletions = (meta?.figures ?? []).reduce((sum, f) => sum + (f.shapes_deleted ?? 0), 0);
+      if (undos > 5) s -= 12;
+      else if (undos > 2) s -= 6;
+      if (deletions > 3) s -= 8;
+    }
+
     return clamp(s, 0, 100);
   });
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
@@ -135,6 +146,18 @@ function computePersistence(attempts: ExerciseAttempt[]): number {
     if ((a.durationOnExercise ?? 0) > 180) s += 10;
     if ((a.editsCount ?? 0) > 0) s += 5;
     if (a.revisited) s += 5;
+
+    // SHAPE_COPY: shapes_deleted shows effort/persistence
+    if (a.exerciseType === "shape_copy") {
+      const meta = a.metadata as { figures?: Array<{ total_shapes_drawn?: number; shapes_deleted?: number; shapes_moved?: number }> } | undefined;
+      const totalShapes = (meta?.figures ?? []).reduce((sum, f) => sum + (f.total_shapes_drawn ?? 0), 0);
+      const deletions = (meta?.figures ?? []).reduce((sum, f) => sum + (f.shapes_deleted ?? 0), 0);
+      const moved = (meta?.figures ?? []).reduce((sum, f) => sum + (f.shapes_moved ?? 0), 0);
+      if (totalShapes > 4) s += 10;
+      if (deletions > 0) s += 5;  // revision = effort
+      if (moved > 2) s += 5;      // refinement = persistence
+    }
+
     return clamp(s, 0, 100);
   });
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
@@ -239,8 +262,48 @@ function buildAttributionEntry(
       explanation = "Selected answer decisively without backtracking — direct analytical decision.";
       indicator = "positive";
     }
+  } else if (type === "shape_copy") {
+    const meta = attempt.metadata as {
+      figures?: Array<{
+        total_shapes_drawn?: number;
+        shapes_deleted?: number;
+        undo_count?: number;
+        time_first_shape_drawn?: string;
+        time_started?: string;
+        required_rules?: string[];
+      }>;
+    } | undefined;
+
+    if (!meta?.figures || meta.figures.length === 0) {
+      explanation = "No drawing data recorded — exercise may have been skipped.";
+      indicator = "low";
+    } else {
+      const totalShapes = meta.figures.reduce((s, f) => s + (f.total_shapes_drawn ?? 0), 0);
+      const totalDeleted = meta.figures.reduce((s, f) => s + (f.shapes_deleted ?? 0), 0);
+      const totalUndos = meta.figures.reduce((s, f) => s + (f.undo_count ?? 0), 0);
+
+      const hasFirstShape = meta.figures.some((f) => f.time_first_shape_drawn != null);
+      const engagementDelay = meta.figures.some((f) => {
+        if (!f.time_first_shape_drawn || !f.time_started) return false;
+        const delay = new Date(f.time_first_shape_drawn).getTime() - new Date(f.time_started).getTime();
+        return delay > 10000;
+      });
+
+      if (totalShapes > 4 && totalDeleted > 0) {
+        explanation = `Drew ${totalShapes} shapes across figures with ${totalDeleted} revision${totalDeleted !== 1 ? "s" : ""} — strong effort and rule engagement.`;
+        indicator = "positive";
+      } else if (totalShapes > 2) {
+        explanation = `Completed the drawing task with ${totalShapes} shapes; ${totalUndos} undo${totalUndos !== 1 ? "s" : ""} detected — moderate confidence.`;
+        indicator = totalUndos > 3 ? "warning" : "positive";
+      } else if (totalShapes > 0) {
+        explanation = `Minimal drawing output (${totalShapes} shape${totalShapes !== 1 ? "s" : ""}); limited rule compliance engagement.`;
+        indicator = engagementDelay ? "warning" : "low";
+      } else {
+        explanation = "No shapes drawn — exercise appears unattempted.";
+        indicator = "low";
+      }
+    }
   } else {
-    // Generic fallback for future exercise types
     const dur = attempt.durationOnExercise ?? 0;
     explanation =
       dur > 60

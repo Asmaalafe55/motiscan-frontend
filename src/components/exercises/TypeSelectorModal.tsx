@@ -58,7 +58,7 @@ const TYPES: TypeInfo[] = [
     measures: "Rule compliance, effort, confidence",
     colour: "border-orange-300 bg-orange-50",
     iconEmoji: "✏️",
-    active: false,
+    active: true,
   },
   {
     key: "similarity_ranking",
