@@ -5,70 +5,15 @@ const now = new Date();
 const daysAgo = (d: number) => new Date(now.getTime() - d * 86400000).toISOString();
 
 // ---------------------------------------------------------------------------
-// Mock exercise library
+// Mock exercise library — DIFFERENCES type only
 // ---------------------------------------------------------------------------
 const mockExercises: Exercise[] = [
-  // --- Legacy exercises (general motivation types) ---
-  {
-    id: "ex1",
-    title: "Algebra Confidence Check",
-    type: "rating_scale",
-    instructions: "Rate your confidence in solving basic algebraic equations from 1 to 10.",
-    content: "",
-    tags: ["math", "algebra", "self-assessment"],
-    createdAt: daysAgo(30),
-    question: {
-      id: "ex1-q",
-      examId: "",
-      type: "rating_scale",
-      text: "How confident do you feel solving basic algebraic equations?",
-      required: true,
-      order: 1,
-    },
-  },
-  {
-    id: "ex2",
-    title: "Growth Mindset Reflection",
-    type: "open_text",
-    instructions:
-      "Ask the student to reflect on a recent challenge in class and how they responded.",
-    content: "",
-    tags: ["reflection", "mindset", "motivation"],
-    createdAt: daysAgo(28),
-    question: {
-      id: "ex2-q",
-      examId: "",
-      type: "open_text",
-      text: "Describe a recent challenge you faced in class and how you responded.",
-      required: true,
-      order: 1,
-    },
-  },
-  {
-    id: "ex3",
-    title: "Enjoyment of Subject",
-    type: "likert_scale",
-    instructions: "Measure how much the student enjoys this subject.",
-    content: "",
-    tags: ["likert", "enjoyment"],
-    createdAt: daysAgo(25),
-    question: {
-      id: "ex3-q",
-      examId: "",
-      type: "likert_scale",
-      text: "I enjoy learning this subject.",
-      options: ["Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"],
-      required: true,
-      order: 1,
-    },
-  },
-  // --- Part-8 DIFFERENCES exercises ---
   {
     id: "diff-city-nature",
     title: "City vs Nature",
     type: "differences",
     instructions:
-      "Look carefully at both outdoor scenes. Find and write down all the differences you can spot between Image 1 and Image 2. Try to find at least 7 differences.",
+      "Look carefully at both outdoor scenes. Find and write down all the differences you can spot between Image 1 and Image 2. Try to find at least 6 differences.",
     content: "",
     tags: ["visual", "differences", "observation", "outdoor"],
     createdAt: daysAgo(10),
@@ -133,55 +78,6 @@ const mockExercises: Exercise[] = [
       },
       expectedAnswerNotes:
         "6 differences: chalkboard colour green→dark, 3 desks→2 desks, clock removed, apple added on teacher's desk, bookshelf has fewer books, extra small window added.",
-    },
-  },
-  // --- Legacy differences exercises from first build ---
-  {
-    id: "diff-ex1",
-    title: "Spot the Differences — Living Room",
-    type: "differences",
-    instructions:
-      "Look carefully at both images of the living room. Find and describe all the differences you can see between Image 1 and Image 2.",
-    content: "",
-    tags: ["visual", "differences", "observation"],
-    createdAt: daysAgo(15),
-    question: {
-      id: "diff-ex1-q",
-      examId: "",
-      type: "differences",
-      text: "Look carefully at both images of the living room. Find and describe all the differences you can see between Image 1 and Image 2.",
-      required: true,
-      order: 1,
-      differenceImages: {
-        image1Url: placeholderImages.room1A,
-        image2Url: placeholderImages.room1B,
-      },
-      expectedAnswerNotes:
-        "5 differences: sofa colour, lamp position, green painting, window divider, bookshelf vs plant.",
-    },
-  },
-  {
-    id: "diff-ex2",
-    title: "Spot the Differences — Garden Scene",
-    type: "differences",
-    instructions:
-      "Examine both garden images carefully. Write down every difference you notice between the two pictures.",
-    content: "",
-    tags: ["visual", "differences", "observation", "nature"],
-    createdAt: daysAgo(12),
-    question: {
-      id: "diff-ex2-q",
-      examId: "",
-      type: "differences",
-      text: "Examine both garden images carefully. Write down every difference you notice between the two pictures.",
-      required: true,
-      order: 1,
-      differenceImages: {
-        image1Url: placeholderImages.garden2A,
-        image2Url: placeholderImages.garden2B,
-      },
-      expectedAnswerNotes:
-        "6 differences: sun position, cloud removed, door colour, tree removed, flower colour, birds added.",
     },
   },
 ];

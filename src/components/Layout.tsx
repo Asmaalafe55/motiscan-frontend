@@ -16,17 +16,14 @@ interface LayoutProps {
 export function Layout({ children, role }: LayoutProps) {
   const { user, logout, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const [isRTL, setIsRTL] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
-    // Only redirect once auth check is complete
     if (!authLoading && (!user || user.role !== role)) {
       router.push("/login");
     }
   }, [user, role, router, authLoading]);
 
-  // Show a full-screen loader while auth resolves — avoids flash / redirect race
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
@@ -48,7 +45,7 @@ export function Layout({ children, role }: LayoutProps) {
   };
 
   return (
-    <div className="flex min-h-screen" dir={isRTL ? "rtl" : "ltr"}>
+    <div className="flex min-h-screen" dir="ltr">
       <Sidebar
         role={role}
         collapsed={sidebarCollapsed}
@@ -65,13 +62,6 @@ export function Layout({ children, role }: LayoutProps) {
               Welcome, {user.name}
             </h1>
             <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsRTL(!isRTL)}
-              >
-                {isRTL ? "LTR" : "RTL"}
-              </Button>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout

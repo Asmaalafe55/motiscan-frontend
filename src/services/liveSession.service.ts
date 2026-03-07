@@ -1,23 +1,15 @@
 import { LiveSession } from "@/types";
 
 // Mock live session state (in real app, this would be WebSocket/Redis)
+// Only examA (Motivation Assessment — Group A) is live.
+// Sara is connected; Ahmed has disconnected but started.
 const liveSessions: Map<string, LiveSession> = new Map([
-  // Pre-seeded: examA (Group A) is live with Sara connected
   [
     "examA",
     {
       examId: "examA",
-      connectedStudents: ["sara"], // Ahmed has left (offline)
+      connectedStudents: ["sara"],
       startedAt: new Date(Date.now() - 50 * 60 * 1000).toISOString(), // 50 min ago
-    },
-  ],
-  // exam2 (Physics) is also live
-  [
-    "exam2",
-    {
-      examId: "exam2",
-      connectedStudents: [],
-      startedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
     },
   ],
 ]);

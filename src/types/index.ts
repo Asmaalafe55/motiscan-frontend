@@ -6,6 +6,10 @@ export interface User {
   name: string;
   role: UserRole;
   password?: string; // Only for mock data
+  // Optional profile fields (editable by teacher)
+  phone?: string;
+  grade?: string;
+  avatarUrl?: string;
 }
 
 export type QuestionType =

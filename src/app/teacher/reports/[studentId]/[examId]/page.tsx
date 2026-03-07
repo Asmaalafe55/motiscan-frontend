@@ -33,9 +33,7 @@ function CircularScore({
   return (
     <div className="flex flex-col items-center gap-2 print:gap-1">
       <svg width="110" height="110" viewBox="0 0 110 110" className="drop-shadow-sm">
-        {/* Track */}
         <circle cx="55" cy="55" r={r} fill="none" stroke="#e5e7eb" strokeWidth="11" />
-        {/* Progress */}
         <circle
           cx="55"
           cy="55"
@@ -49,26 +47,10 @@ function CircularScore({
           transform="rotate(-90 55 55)"
           style={{ transition: "stroke-dashoffset 0.6s ease" }}
         />
-        {/* Score text */}
-        <text
-          x="55"
-          y="51"
-          textAnchor="middle"
-          fontSize="20"
-          fontWeight="700"
-          fill="#111827"
-          fontFamily="inherit"
-        >
+        <text x="55" y="51" textAnchor="middle" fontSize="20" fontWeight="700" fill="#111827" fontFamily="inherit">
           {score}
         </text>
-        <text
-          x="55"
-          y="67"
-          textAnchor="middle"
-          fontSize="10"
-          fill="#6b7280"
-          fontFamily="inherit"
-        >
+        <text x="55" y="67" textAnchor="middle" fontSize="10" fill="#6b7280" fontFamily="inherit">
           / 100
         </text>
       </svg>
@@ -78,9 +60,6 @@ function CircularScore({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Type label helper
-// ---------------------------------------------------------------------------
 function formatType(type: string) {
   return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
@@ -92,9 +71,6 @@ function fmtSeconds(s: number) {
   return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
 }
 
-// ---------------------------------------------------------------------------
-// Measure dimension badge colors
-// ---------------------------------------------------------------------------
 const MEASURE_COLORS: Record<MeasureDimension, string> = {
   attention:             "bg-blue-50 text-blue-700 border-blue-200",
   analytical_engagement: "bg-blue-50 text-blue-700 border-blue-200",
@@ -111,36 +87,24 @@ const MEASURE_COLORS: Record<MeasureDimension, string> = {
   risk_taking:           "bg-rose-50 text-rose-700 border-rose-200",
 };
 
-// ---------------------------------------------------------------------------
-// Measure badge chip component
-// ---------------------------------------------------------------------------
 function MeasureBadge({ m }: { m: MeasureDimension }) {
   const colors = MEASURE_COLORS[m] ?? "bg-gray-50 text-gray-600 border-gray-200";
   return (
-    <span
-      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none ${colors}`}
-    >
+    <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none ${colors}`}>
       {m.replace(/_/g, "\u00a0")}
     </span>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Indicator icon
-// ---------------------------------------------------------------------------
 function IndicatorIcon({ indicator }: { indicator: AttributionEntry["indicator"] }) {
   if (indicator === "positive") return <span title="Positive signal">✅</span>;
   if (indicator === "warning")  return <span title="Moderate / mixed signal">⚠️</span>;
   return <span title="Low / missing signal">🔴</span>;
 }
 
-// ---------------------------------------------------------------------------
-// Score Attribution card
-// ---------------------------------------------------------------------------
 function ScoreAttributionCard({ attr }: { attr: ScoreAttribution }) {
   return (
     <div className="rounded-xl border bg-white overflow-hidden">
-      {/* Card header */}
       <div
         className="flex items-center justify-between px-5 py-3"
         style={{ borderLeft: `4px solid ${attr.color}` }}
@@ -156,29 +120,23 @@ function ScoreAttributionCard({ attr }: { attr: ScoreAttribution }) {
           <span className="text-xs font-normal text-gray-400">/100</span>
         </span>
       </div>
-
-      {/* Entries */}
       {attr.entries.length === 0 ? (
         <p className="px-5 py-3 text-xs text-gray-400 italic">No specific exercises target this dimension.</p>
       ) : (
         <div className="divide-y divide-gray-50">
           {attr.entries.map((entry, i) => (
             <div key={i} className="px-5 py-3 flex gap-3">
-              {/* Left: exercise label + indicator */}
               <div className="flex-shrink-0 flex flex-col items-center gap-1 pt-0.5">
                 <span className="h-6 w-6 rounded-full bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-600">
                   {entry.exerciseOrder}
                 </span>
                 <IndicatorIcon indicator={entry.indicator} />
               </div>
-
-              {/* Right: details */}
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-gray-700 mb-1">
                   Exercise {entry.exerciseOrder} ·{" "}
                   <span className="font-normal text-gray-500">{formatType(entry.exerciseType)}</span>
                 </p>
-                {/* Measure badges */}
                 <div className="flex flex-wrap gap-1 mb-1.5">
                   <span className="text-[10px] text-gray-400 self-center mr-0.5">Measures:</span>
                   {entry.measures.map((m) => (
@@ -201,8 +159,8 @@ function ScoreAttributionCard({ attr }: { attr: ScoreAttribution }) {
 export default function AIReportPage() {
   const params = useParams();
   const router = useRouter();
-  const examId = params.examId as string;
   const studentId = params.studentId as string;
+  const examId = params.examId as string;
 
   const [report, setReport] = useState<AIReport | null>(null);
   const [exam, setExam] = useState<Exam | null>(null);
@@ -253,7 +211,6 @@ export default function AIReportPage() {
     generate();
   }, [examId, studentId]);
 
-  // ── Loading state ────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <Layout role="teacher">
@@ -273,7 +230,6 @@ export default function AIReportPage() {
     );
   }
 
-  // ── Error state ──────────────────────────────────────────────────────────
   if (error || !report || !exam || !student) {
     return (
       <Layout role="teacher">
@@ -306,48 +262,33 @@ export default function AIReportPage() {
 
   return (
     <>
-      {/*
-        Print styles — hides the sidebar, header, and action bar so only
-        the report content prints. No external library needed.
-      */}
       <style>{`
         @media print {
           aside,
           header,
           #report-actions { display: none !important; }
-          /* Remove the sidebar margin from the main content wrapper */
           .flex-1[style] { margin-inline-start: 0 !important; }
           main { padding: 16px !important; }
           body { background: white !important; }
-          /* Avoid page breaks inside cards */
           .print-card { break-inside: avoid; }
         }
       `}</style>
 
       <Layout role="teacher">
-        {/* ── Action bar (hidden on print) ────────────────────────────── */}
-        <div
-          id="report-actions"
-          className="flex items-center justify-between mb-6 print:hidden"
-        >
+        <div id="report-actions" className="flex items-center justify-between mb-6 print:hidden">
           <Button variant="ghost" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => window.print()}
-            className="gap-2"
-          >
+          <Button variant="outline" onClick={() => window.print()} className="gap-2">
             <Printer className="h-4 w-4" />
             Print / Export PDF
           </Button>
         </div>
 
-        {/* ── Report body ─────────────────────────────────────────────── */}
         <div id="report-body" className="max-w-4xl mx-auto space-y-6 print:space-y-4">
 
-          {/* ── Header card ── */}
+          {/* Header card */}
           <div className="print-card rounded-2xl border bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white shadow-lg print:shadow-none">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -357,13 +298,10 @@ export default function AIReportPage() {
                 <h1 className="text-2xl font-bold leading-tight">{exam.title}</h1>
                 <p className="mt-1 text-blue-100 text-sm">{exam.description}</p>
               </div>
-              {/* Logo mark */}
               <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center">
                 <Brain className="h-6 w-6 text-white" />
               </div>
             </div>
-
-            {/* Meta row */}
             <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 { label: "Student", value: student.name },
@@ -381,38 +319,18 @@ export default function AIReportPage() {
             </div>
           </div>
 
-          {/* ── Score cards ── */}
+          {/* Score cards */}
           <div className="print-card rounded-2xl border bg-white p-6 shadow-sm">
             <h2 className="text-base font-bold text-gray-800 mb-5">Motivation Scores</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 justify-items-center">
-              <CircularScore
-                score={report.scores.engagement}
-                color="#3b82f6"
-                label="Engagement"
-                sublabel="Activity & responsiveness"
-              />
-              <CircularScore
-                score={report.scores.confidence}
-                color="#8b5cf6"
-                label="Confidence"
-                sublabel="Answer certainty"
-              />
-              <CircularScore
-                score={report.scores.persistence}
-                color="#10b981"
-                label="Persistence"
-                sublabel="Effort & duration"
-              />
-              <CircularScore
-                score={report.scores.emotionalState}
-                color={emotionalColor}
-                label="Emotional State"
-                sublabel={report.emotionalStateLabel}
-              />
+              <CircularScore score={report.scores.engagement} color="#3b82f6" label="Engagement" sublabel="Activity & responsiveness" />
+              <CircularScore score={report.scores.confidence} color="#8b5cf6" label="Confidence" sublabel="Answer certainty" />
+              <CircularScore score={report.scores.persistence} color="#10b981" label="Persistence" sublabel="Effort & duration" />
+              <CircularScore score={report.scores.emotionalState} color={emotionalColor} label="Emotional State" sublabel={report.emotionalStateLabel} />
             </div>
           </div>
 
-          {/* ── Score Breakdown ── */}
+          {/* Score Breakdown */}
           {report.scoreAttributions.length > 0 && (
             <div className="print-card rounded-2xl border bg-white shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b">
@@ -431,7 +349,7 @@ export default function AIReportPage() {
             </div>
           )}
 
-          {/* ── AI Summary ── */}
+          {/* AI Summary */}
           <div className="print-card rounded-2xl border bg-white p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <Brain className="h-4 w-4 text-blue-600" />
@@ -440,7 +358,7 @@ export default function AIReportPage() {
             <p className="text-sm text-gray-700 leading-relaxed">{report.summary}</p>
           </div>
 
-          {/* ── Exercise breakdown table ── */}
+          {/* Exercise breakdown table */}
           {report.exerciseBreakdown.length > 0 && (
             <div className="print-card rounded-2xl border bg-white shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b">
@@ -503,7 +421,7 @@ export default function AIReportPage() {
             </div>
           )}
 
-          {/* ── Recommendations ── */}
+          {/* Recommendations */}
           <div className="print-card rounded-2xl border bg-white p-6 shadow-sm">
             <h2 className="text-base font-bold text-gray-800 mb-4">Recommendations</h2>
             <ol className="space-y-3">
@@ -518,7 +436,7 @@ export default function AIReportPage() {
             </ol>
           </div>
 
-          {/* ── Footer (visible on print) ── */}
+          {/* Footer (print only) */}
           <div className="hidden print:block text-center text-xs text-gray-400 pt-4 border-t">
             Generated by MotiScan AI · {format(new Date(report.generatedAt), "PPpp")}
           </div>

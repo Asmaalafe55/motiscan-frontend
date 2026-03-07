@@ -179,7 +179,7 @@ export default function ExamDetailPage() {
   const handleGetReport = async (studentId: string) => {
     setReportLoadingFor(studentId);
     // Navigate — the report page itself shows the 2-second AI loading state
-    router.push(`/teacher/reports/exam/${examId}/${studentId}`);
+    router.push(`/teacher/reports/${studentId}/${examId}`);
   };
 
   // ---- Derive which students are online vs offline ----
@@ -433,7 +433,7 @@ export default function ExamDetailPage() {
                                 onClick={() => handleGetReport(sid)}
                               >
                                 <BarChart2 className="h-3.5 w-3.5 mr-1.5" />
-                                {reportLoadingFor === sid ? "Opening…" : "Get AI Report"}
+                                {reportLoadingFor === sid ? "Opening…" : "View AI Report"}
                               </Button>
                             </div>
                           )}
@@ -480,7 +480,7 @@ export default function ExamDetailPage() {
                           onClick={() => handleGetReport(sub.studentId)}
                         >
                           <BarChart2 className="h-3.5 w-3.5 mr-1.5" />
-                          {reportLoadingFor === sub.studentId ? "Opening…" : "Get Report"}
+                          {reportLoadingFor === sub.studentId ? "Opening…" : "View AI Report"}
                         </Button>
                       </div>
                     );
@@ -529,7 +529,7 @@ export default function ExamDetailPage() {
                               onClick={() => handleGetReport(student.id)}
                             >
                               <BarChart2 className="h-3 w-3 mr-1" />
-                              {reportLoadingFor === student.id ? "Opening…" : "Get Report"}
+                              {reportLoadingFor === student.id ? "Opening…" : "View AI Report"}
                             </Button>
                           )}
                         </div>

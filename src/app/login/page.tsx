@@ -149,10 +149,12 @@ export default function LoginPage() {
               {isLoading ? "Logging in..." : "Login"}
             </Button>
 
-            <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
-              <p className="font-semibold">Demo Credentials:</p>
-              <p>Teacher: teacher1@motiscan.com / teacher123</p>
-              <p>Student: student1@motiscan.com / student123</p>
+            <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800 space-y-1">
+              <p className="font-semibold mb-1">Demo Credentials:</p>
+              <p><span className="font-medium">Teacher:</span> noor@test.com / teacher123</p>
+              <p className="text-blue-700 text-xs font-medium mt-1">Students (password: student123)</p>
+              <p>sara@test.com · ahmed@test.com</p>
+              <p>maya@test.com · omar@test.com</p>
             </div>
           </form>
         </CardContent>

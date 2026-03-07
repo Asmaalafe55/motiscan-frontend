@@ -1,90 +1,15 @@
-import { Exam, Question, ExamSubmission, Answer } from "@/types";
+import { Exam, ExamSubmission, Answer } from "@/types";
 import { placeholderImages } from "@/lib/placeholder-images";
 
 const now = new Date();
 const daysAgo = (d: number) => new Date(now.getTime() - d * 86400000).toISOString();
 
 // ---------------------------------------------------------------------------
-// Mock exams database
+// Mock exams — single source of truth
+// Only DIFFERENCES exercise type. No math, no multiple-choice, no open-text.
 // ---------------------------------------------------------------------------
 const mockExams: Exam[] = [
-  // ---- Legacy exams (teacher1) ----
-  {
-    id: "exam1",
-    title: "Math Assessment - Algebra Basics",
-    description: "Test your understanding of basic algebraic concepts",
-    teacherId: "teacher1",
-    teacherName: "Sarah Cohen",
-    createdAt: daysAgo(7),
-    isLive: false,
-    duration: 30,
-    assignedStudentIds: ["student1", "student2", "student3"],
-    questions: [
-      {
-        id: "q1", examId: "exam1", type: "multiple_choice",
-        text: "What is the solution to 2x + 5 = 13?",
-        options: ["x = 3", "x = 4", "x = 5", "x = 6"],
-        required: true, order: 1,
-      },
-      {
-        id: "q2", examId: "exam1", type: "open_text",
-        text: "Explain how you would solve the equation 3x - 7 = 14",
-        required: true, order: 2,
-      },
-      {
-        id: "q3", examId: "exam1", type: "rating_scale",
-        text: "How confident are you with solving linear equations?",
-        required: true, order: 3,
-      },
-      {
-        id: "q4", examId: "exam1", type: "likert_scale",
-        text: "I enjoy solving math problems",
-        options: ["Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"],
-        required: true, order: 4,
-      },
-    ],
-  },
-  {
-    id: "exam2",
-    title: "Science Quiz - Physics Fundamentals",
-    description: "Basic physics concepts and principles",
-    teacherId: "teacher1",
-    teacherName: "Sarah Cohen",
-    createdAt: daysAgo(3),
-    isLive: true,
-    duration: 20,
-    assignedStudentIds: ["student1", "student2", "student3"],
-    questions: [
-      {
-        id: "q5", examId: "exam2", type: "multiple_choice",
-        text: "What is the unit of force?",
-        options: ["Joule", "Newton", "Watt", "Pascal"],
-        required: true, order: 1,
-      },
-      {
-        id: "q6", examId: "exam2", type: "open_text",
-        text: "Describe Newton's First Law of Motion in your own words",
-        required: true, order: 2,
-      },
-      {
-        id: "q7", examId: "exam2", type: "rating_scale",
-        text: "Rate your understanding of physics concepts (1-10)",
-        required: true, order: 3,
-      },
-      {
-        id: "q8", examId: "exam2", type: "differences",
-        text: "Look carefully at both images of the living room. Find and describe all the differences you can see between Image 1 and Image 2.",
-        required: true, order: 4,
-        differenceImages: {
-          image1Url: placeholderImages.room1A,
-          image2Url: placeholderImages.room1B,
-        },
-        expectedAnswerNotes:
-          "5 differences: sofa colour, lamp position, green painting, window divider, bookshelf vs plant.",
-      },
-    ],
-  },
-  // ---- Part-8 exams (Dr. Noor Salim) ----
+  // ---- Exam 1: Motivation Assessment — Group A (LIVE) ----
   {
     id: "examA",
     title: "Motivation Assessment — Group A",
@@ -97,75 +22,160 @@ const mockExams: Exam[] = [
     assignedStudentIds: ["sara", "ahmed"],
     questions: [
       {
-        id: "examA-q1", examId: "examA", type: "differences", required: true, order: 1,
-        text: "Look carefully at both outdoor scenes. Find and write down all the differences you can spot between Image 1 and Image 2. Try to find at least 7 differences.",
+        id: "examA-q1",
+        examId: "examA",
+        type: "differences",
+        required: true,
+        order: 1,
+        text: "Look carefully at both outdoor scenes. Find and write down all the differences you can spot between Image 1 and Image 2. Try to find at least 6 differences.",
         differenceImages: {
           image1Url: placeholderImages.garden2A,
           image2Url: placeholderImages.garden2B,
         },
         expectedAnswerNotes:
-          "6 differences: sun position, cloud removed, door colour, tree removed, flower colour, birds added.",
+          "6 differences: sun position, cloud removed, door colour red→blue, tree removed, flower colour orange→purple, birds added.",
       },
       {
-        id: "examA-q2", examId: "examA", type: "differences", required: true, order: 2,
+        id: "examA-q2",
+        examId: "examA",
+        type: "differences",
+        required: true,
+        order: 2,
         text: "Study both kitchen images carefully. Write a list of every difference you notice. There are 5 differences to find.",
         differenceImages: {
           image1Url: placeholderImages.kitchen3A,
           image2Url: placeholderImages.kitchen3B,
         },
         expectedAnswerNotes:
-          "5 differences: curtains, fridge colour, 3→2 cups, pear removed, clock added.",
+          "5 differences: curtains added to window, fridge colour white→beige, 3 cups reduced to 2, green pear removed, wall clock added.",
       },
     ],
   },
+
+  // ---- Exam 2: Cognitive Evaluation — Group B (DRAFT, session not open) ----
   {
     id: "examB",
     title: "Cognitive Evaluation — Group B",
     description: "Attention and observation exercises",
     teacherId: "noor",
     teacherName: "Dr. Noor Salim",
-    createdAt: daysAgo(2),
+    createdAt: daysAgo(3),
     isLive: false,
     exerciseIds: ["diff-kitchen", "diff-classroom"],
-    assignedStudentIds: ["maya", "omar"],
+    assignedStudentIds: ["maya", "omar", "sara"],
     questions: [
       {
-        id: "examB-q1", examId: "examB", type: "differences", required: true, order: 1,
+        id: "examB-q1",
+        examId: "examB",
+        type: "differences",
+        required: true,
+        order: 1,
         text: "Study both kitchen images carefully. Write a list of every difference you notice. There are 5 differences to find.",
         differenceImages: {
           image1Url: placeholderImages.kitchen3A,
           image2Url: placeholderImages.kitchen3B,
         },
         expectedAnswerNotes:
-          "5 differences: curtains, fridge colour, 3→2 cups, pear removed, clock added.",
+          "5 differences: curtains added to window, fridge colour white→beige, 3 cups reduced to 2, green pear removed, wall clock added.",
       },
       {
-        id: "examB-q2", examId: "examB", type: "differences", required: true, order: 2,
+        id: "examB-q2",
+        examId: "examB",
+        type: "differences",
+        required: true,
+        order: 2,
         text: "Compare the two classroom images below. Find and describe 6 differences between them.",
         differenceImages: {
           image1Url: placeholderImages.classroom4A,
           image2Url: placeholderImages.classroom4B,
         },
         expectedAnswerNotes:
-          "6 differences: chalkboard colour, 3→2 desks, clock removed, apple added, fewer books, extra window.",
+          "6 differences: chalkboard colour green→dark, 3 desks→2 desks, clock removed, apple added on teacher's desk, bookshelf has fewer books, extra small window added.",
+      },
+    ],
+  },
+
+  // ---- Exam 3: Attention and Focus Test (COMPLETED — session closed, all submitted) ----
+  {
+    id: "examC",
+    title: "Attention and Focus Test",
+    description: "Visual attention and focus assessment",
+    teacherId: "noor",
+    teacherName: "Dr. Noor Salim",
+    createdAt: daysAgo(10),
+    isLive: false,
+    exerciseIds: ["diff-city-nature", "diff-classroom"],
+    assignedStudentIds: ["ahmed", "maya"],
+    questions: [
+      {
+        id: "examC-q1",
+        examId: "examC",
+        type: "differences",
+        required: true,
+        order: 1,
+        text: "Look carefully at both outdoor scenes. Find and write down all the differences you can spot between Image 1 and Image 2. Try to find at least 6 differences.",
+        differenceImages: {
+          image1Url: placeholderImages.garden2A,
+          image2Url: placeholderImages.garden2B,
+        },
+        expectedAnswerNotes:
+          "6 differences: sun position, cloud removed, door colour red→blue, tree removed, flower colour orange→purple, birds added.",
+      },
+      {
+        id: "examC-q2",
+        examId: "examC",
+        type: "differences",
+        required: true,
+        order: 2,
+        text: "Compare the two classroom images below. Find and describe 6 differences between them.",
+        differenceImages: {
+          image1Url: placeholderImages.classroom4A,
+          image2Url: placeholderImages.classroom4B,
+        },
+        expectedAnswerNotes:
+          "6 differences: chalkboard colour green→dark, 3 desks→2 desks, clock removed, apple added on teacher's desk, bookshelf has fewer books, extra small window added.",
       },
     ],
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Mock submissions — pre-seeded for completed exams
+// Sara submitted examA, Ahmed & Maya submitted examC
+// ---------------------------------------------------------------------------
 const mockSubmissions: ExamSubmission[] = [
   {
-    id: "sub1",
-    examId: "exam1",
-    studentId: "student1",
+    id: "sub-sara-examA",
+    examId: "examA",
+    studentId: "sara",
     answers: [
-      { questionId: "q1", value: "x = 4" },
-      { questionId: "q2", value: "I would add 7 to both sides, then divide by 3" },
-      { questionId: "q3", value: 8 },
-      { questionId: "q4", value: "Agree" },
+      { questionId: "examA-q1", value: "Sun moved to the right; a cloud disappeared; door changed from red to blue; tree was removed; flowers changed from orange to purple; birds were added in the sky." },
+      { questionId: "examA-q2", value: "Curtains appeared on the window; fridge changed from white to beige; one cup was removed; the pear is gone; a wall clock was added." },
+    ],
+    submittedAt: daysAgo(1),
+    timeSpent: 2340,
+  },
+  {
+    id: "sub-ahmed-examC",
+    examId: "examC",
+    studentId: "ahmed",
+    answers: [
+      { questionId: "examC-q1", value: "The sun moved; a cloud was removed; the door colour changed; a tree disappeared; flowers changed colour; birds appeared." },
+      { questionId: "examC-q2", value: "Chalkboard became darker; one desk was removed; the clock is gone; an apple appeared; fewer books on the shelf; a small window was added." },
     ],
     submittedAt: daysAgo(2),
-    timeSpent: 1200,
+    timeSpent: 1980,
+  },
+  {
+    id: "sub-maya-examC",
+    examId: "examC",
+    studentId: "maya",
+    answers: [
+      { questionId: "examC-q1", value: "Sun is in different position; no cloud; door changed colour; tree missing; flowers different colour; birds added." },
+      { questionId: "examC-q2", value: "Board colour changed; fewer desks; clock removed; apple on desk; fewer books; extra window." },
+    ],
+    submittedAt: daysAgo(2),
+    timeSpent: 2100,
   },
 ];
 
@@ -259,5 +269,11 @@ export const examService = {
   getSubmissionsForExam: async (examId: string): Promise<ExamSubmission[]> => {
     await new Promise((r) => setTimeout(r, 300));
     return mockSubmissions.filter((s) => s.examId === examId);
+  },
+
+  /** Check if a student has already submitted a specific exam */
+  hasStudentSubmitted: async (examId: string, studentId: string): Promise<boolean> => {
+    await new Promise((r) => setTimeout(r, 100));
+    return mockSubmissions.some((s) => s.examId === examId && s.studentId === studentId);
   },
 };

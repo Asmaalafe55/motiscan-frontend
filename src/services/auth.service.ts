@@ -1,22 +1,8 @@
 import { User, UserRole } from "@/types";
 
-// Mock users database
+// Mock users database — single source of truth
 const mockUsers: User[] = [
-  // --- Teachers ---
-  {
-    id: "teacher1",
-    email: "teacher1@motiscan.com",
-    name: "Sarah Cohen",
-    role: "teacher",
-    password: "teacher123",
-  },
-  {
-    id: "teacher2",
-    email: "teacher2@motiscan.com",
-    name: "David Levi",
-    role: "teacher",
-    password: "teacher123",
-  },
+  // --- Teacher ---
   {
     id: "noor",
     email: "noor@test.com",
@@ -25,27 +11,6 @@ const mockUsers: User[] = [
     password: "teacher123",
   },
   // --- Students ---
-  {
-    id: "student1",
-    email: "student1@motiscan.com",
-    name: "Noa Avraham",
-    role: "student",
-    password: "student123",
-  },
-  {
-    id: "student2",
-    email: "student2@motiscan.com",
-    name: "Ethan Ben-David",
-    role: "student",
-    password: "student123",
-  },
-  {
-    id: "student3",
-    email: "student3@motiscan.com",
-    name: "Maya Shalom",
-    role: "student",
-    password: "student123",
-  },
   {
     id: "sara",
     email: "sara@test.com",
