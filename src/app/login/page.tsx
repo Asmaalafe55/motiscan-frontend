@@ -26,7 +26,7 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
   role: z.enum(["teacher", "student"]),
 });
-
+//
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
