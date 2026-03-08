@@ -1,5 +1,6 @@
-import { Exercise, Question, Exam, ExamTemplate, ShapeCopyConfig } from "@/types";
+import { Exercise, Question, Exam, ExamTemplate, ShapeCopyConfig, AnalyticalPerceptionConfig } from "@/types";
 import { placeholderImages } from "@/lib/placeholder-images";
+import { MOCK_DESIGN_SVGS, MOCK_SECTION_SVGS } from "@/components/exercises/analytical/ShapeSVGs";
 
 // ---------------------------------------------------------------------------
 // SVG helper — generates a data URI for simple model shapes
@@ -110,6 +111,50 @@ const shapeCopyChallengeConfig: ShapeCopyConfig = {
 
 const now = new Date();
 const daysAgo = (d: number) => new Date(now.getTime() - d * 86400000).toISOString();
+
+// ---------------------------------------------------------------------------
+// Mock ANALYTICAL_PERCEPTION configs (declared early, before mockExercises)
+// ---------------------------------------------------------------------------
+
+const apBasicConfig: AnalyticalPerceptionConfig = {
+  grid_size: "2x4",
+  cells: [
+    // A1: Diamond with inner diamond → 4 triangular wedge sections between outer and inner diamond
+    { cell_label: "A1", design_svg: MOCK_DESIGN_SVGS.diamondInner, section_svg: MOCK_SECTION_SVGS.triangle,      correct_answer: 4, teacher_notes: "4 triangular wedge sections between the outer and inner diamond." },
+    // A2: Square with X + cross → 8 triangular sections total
+    { cell_label: "A2", design_svg: MOCK_DESIGN_SVGS.squareX,      section_svg: MOCK_SECTION_SVGS.triangle,      correct_answer: 8, teacher_notes: "X + cross lines divide the square into 8 triangular sections." },
+    // A3: Rectangle with 2 ovals → closed oval section, answer = 2
+    { cell_label: "A3", design_svg: MOCK_DESIGN_SVGS.rectOvals,    section_svg: MOCK_SECTION_SVGS.oval,           correct_answer: 2, teacher_notes: "2 oval shapes inside the rectangle." },
+    // A4: Triangle with 2 inner triangles → 3 triangles total
+    { cell_label: "A4", design_svg: MOCK_DESIGN_SVGS.triangleInner,section_svg: MOCK_SECTION_SVGS.triangle,      correct_answer: 3, teacher_notes: "3 nested triangles: outer + 2 inner." },
+    // B1: Rectangle with 3 oval columns → closed oval section, answer = 3
+    { cell_label: "B1", design_svg: MOCK_DESIGN_SVGS.rectColumns,  section_svg: MOCK_SECTION_SVGS.oval,           correct_answer: 3, teacher_notes: "3 oval column shapes inside the rectangle." },
+    // B2: Parallelogram with inner parallelogram → 2 parallelograms
+    { cell_label: "B2", design_svg: MOCK_DESIGN_SVGS.parallelogram,section_svg: MOCK_SECTION_SVGS.parallelogram,  correct_answer: 2, teacher_notes: "2 parallelogram shapes (outer + inner)." },
+    // B3: Circle with 5 small circles on hexagon vertices → 5 small circles
+    { cell_label: "B3", design_svg: MOCK_DESIGN_SVGS.circleHex,    section_svg: MOCK_SECTION_SVGS.circle,         correct_answer: 5, teacher_notes: "5 small circles placed at the hexagon vertices." },
+    // B4: 3 overlapping rectangles → closed rectangle section, answer = 3
+    { cell_label: "B4", design_svg: MOCK_DESIGN_SVGS.overlapRects, section_svg: MOCK_SECTION_SVGS.rect,           correct_answer: 3, teacher_notes: "3 overlapping rectangles." },
+  ],
+};
+
+const apChallengeConfig: AnalyticalPerceptionConfig = {
+  grid_size: "2x3",
+  cells: [
+    // A1: Concentric squares → 4 squares
+    { cell_label: "A1", design_svg: MOCK_DESIGN_SVGS.concentricSquares, section_svg: MOCK_SECTION_SVGS.square,   correct_answer: 4,  teacher_notes: "4 concentric squares." },
+    // A2: Star/asterisk (6 lines through circle) → 12 triangular segments, section is closed triangle
+    { cell_label: "A2", design_svg: MOCK_DESIGN_SVGS.star,              section_svg: MOCK_SECTION_SVGS.triangle, correct_answer: 12, teacher_notes: "6 lines through a circle create 12 triangular segments." },
+    // A3: Dot grid 4×4 → 16 circle dots
+    { cell_label: "A3", design_svg: MOCK_DESIGN_SVGS.dotGrid,           section_svg: MOCK_SECTION_SVGS.circle,   correct_answer: 16, teacher_notes: "4×4 dot grid = 16 circular dots." },
+    // B1: Zigzag rows → 5 rows of chevrons, section is a closed chevron shape
+    { cell_label: "B1", design_svg: MOCK_DESIGN_SVGS.zigzag,            section_svg: MOCK_SECTION_SVGS.chevron,  correct_answer: 5,  teacher_notes: "5 rows of chevron/zigzag lines." },
+    // B2: Triangle with inner triangles → 3 triangles
+    { cell_label: "B2", design_svg: MOCK_DESIGN_SVGS.triangleInner,     section_svg: MOCK_SECTION_SVGS.triangle, correct_answer: 3,  teacher_notes: "3 triangles (outer + 2 inner)." },
+    // B3: Rectangle with 2 ovals → closed oval section, answer = 2
+    { cell_label: "B3", design_svg: MOCK_DESIGN_SVGS.rectOvals,         section_svg: MOCK_SECTION_SVGS.oval,     correct_answer: 2,  teacher_notes: "2 oval shapes inside rectangle." },
+  ],
+};
 
 // ---------------------------------------------------------------------------
 // Mock exercise library — DIFFERENCES type only
@@ -223,6 +268,44 @@ const mockExercises: Exercise[] = [
       required: true,
       order: 1,
       shapeCopyConfig: shapeCopyChallengeConfig,
+    },
+  },
+  {
+    id: "ap-basic",
+    title: "Shape Recognition — Basic",
+    type: "analytical_perception",
+    instructions:
+      "On each line write the number of times that the section next to it appears in the design.",
+    content: "",
+    tags: ["analytical", "perception", "visual", "counting", "shapes"],
+    createdAt: daysAgo(2),
+    question: {
+      id: "ap-basic-q",
+      examId: "",
+      type: "analytical_perception",
+      text: "On each line write the number of times that the section next to it appears in the design.",
+      required: true,
+      order: 1,
+      analyticalPerceptionConfig: apBasicConfig,
+    },
+  },
+  {
+    id: "ap-challenge",
+    title: "Complex Pattern Analysis",
+    type: "analytical_perception",
+    instructions:
+      "On each line write the number of times that the section next to it appears in the design.",
+    content: "",
+    tags: ["analytical", "perception", "visual", "complex", "patterns"],
+    createdAt: daysAgo(0),
+    question: {
+      id: "ap-challenge-q",
+      examId: "",
+      type: "analytical_perception",
+      text: "On each line write the number of times that the section next to it appears in the design.",
+      required: true,
+      order: 1,
+      analyticalPerceptionConfig: apChallengeConfig,
     },
   },
 ];

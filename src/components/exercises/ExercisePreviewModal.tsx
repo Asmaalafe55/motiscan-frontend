@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { DifferencesExercise } from "./DifferencesExercise";
 import { ShapeCopyExercise } from "./ShapeCopyExercise";
+import { AnalyticalPerceptionExercise } from "./AnalyticalPerceptionExercise";
 import type { Exercise, DifferencesTracking } from "@/types";
 import { Eye } from "lucide-react";
 
@@ -68,6 +69,12 @@ export function ExercisePreviewModal({ exercise, open, onClose }: ExercisePrevie
             <ShapeCopyExercise
               instructions={q.text}
               config={q.shapeCopyConfig}
+              onTrackingUpdate={() => {}}
+            />
+          ) : q.type === "analytical_perception" && q.analyticalPerceptionConfig ? (
+            <AnalyticalPerceptionExercise
+              instructions={q.text}
+              config={q.analyticalPerceptionConfig}
               onTrackingUpdate={() => {}}
             />
           ) : (

@@ -19,11 +19,12 @@ import {
 import { examService } from "@/services/exam.service";
 import { liveSessionService } from "@/services/liveSession.service";
 import { trackingService } from "@/services/tracking.service";
-import { Exam, Answer, ExerciseAttempt, DifferencesTracking, ShapeCopyTracking } from "@/types";
+import { Exam, Answer, ExerciseAttempt, DifferencesTracking, ShapeCopyTracking, AnalyticalPerceptionTracking } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { DifferencesExercise } from "@/components/exercises/DifferencesExercise";
 import { ShapeCopyExercise } from "@/components/exercises/ShapeCopyExercise";
+import { AnalyticalPerceptionExercise } from "@/components/exercises/AnalyticalPerceptionExercise";
 import { Send } from "lucide-react";
 
 type AnswersForm = { answers: Record<string, string | number> };
@@ -60,6 +61,10 @@ export default function TakeExamPage() {
   // Per-exercise tracking for the SHAPE_COPY type
   const [shapeCopyTracking, setShapeCopyTracking] = useState<
     Record<string, ShapeCopyTracking>
+  >({});
+  // Per-exercise tracking for the ANALYTICAL_PERCEPTION type
+  const [analyticalPerceptionTracking, setAnalyticalPerceptionTracking] = useState<
+    Record<string, AnalyticalPerceptionTracking>
   >({});
 
   const { register, handleSubmit, watch, setValue } = useForm<AnswersForm>({
@@ -260,6 +265,7 @@ export default function TakeExamPage() {
 
       const diffTracking = differencesTracking[q.id];
       const scTracking = shapeCopyTracking[q.id];
+      const apTracking = analyticalPerceptionTracking[q.id];
       return {
         examId,
         exerciseId: q.id,
@@ -282,6 +288,9 @@ export default function TakeExamPage() {
           : {}),
         ...(scTracking
           ? { metadata: scTracking as unknown as Record<string, unknown> }
+          : {}),
+        ...(apTracking
+          ? { metadata: apTracking as unknown as Record<string, unknown> }
           : {}),
       };
     });
@@ -361,6 +370,22 @@ export default function TakeExamPage() {
     [currentExercise?.id]
   );
 
+  // Stable callback for ANALYTICAL_PERCEPTION tracking — same pattern to avoid infinite loops
+  const handleAnalyticalPerceptionTrackingUpdate = useCallback(
+    (tracking: AnalyticalPerceptionTracking) => {
+      setAnalyticalPerceptionTracking((prev) => ({
+        ...prev,
+        [currentExercise?.id ?? ""]: tracking,
+      }));
+      // Mark exercise as answered once at least one item is answered
+      if (tracking.items.some((i) => !i.skipped) && metrics[currentExercise?.id ?? ""]?.skipped !== false) {
+        handleAnswerChange(currentExercise?.id ?? "", currentIndex, "analytical_perception_in_progress");
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentExercise?.id, currentIndex]
+  );
+
   if (!exam || !currentExercise) {
     return (
       <Layout role="student">
@@ -437,7 +462,7 @@ export default function TakeExamPage() {
                 {currentExercise.required && <span className="text-red-500 ml-1">*</span>}
               </CardTitle>
               {/* For differences and shape_copy exercises the instructions are rendered inside the component */}
-              {currentExercise.type !== "differences" && currentExercise.type !== "shape_copy" && (
+              {currentExercise.type !== "differences" && currentExercise.type !== "shape_copy" && currentExercise.type !== "analytical_perception" && (
                 <CardDescription className="text-base font-normal mt-2">
                   {currentExercise.text}
                 </CardDescription>
@@ -558,6 +583,15 @@ export default function TakeExamPage() {
                         handleAnswerChange(currentExercise.id, currentIndex, "drawing_in_progress");
                       }
                     }}
+                  />
+                )}
+
+              {currentExercise.type === "analytical_perception" &&
+                currentExercise.analyticalPerceptionConfig && (
+                  <AnalyticalPerceptionExercise
+                    instructions={currentExercise.text}
+                    config={currentExercise.analyticalPerceptionConfig}
+                    onTrackingUpdate={handleAnalyticalPerceptionTrackingUpdate}
                   />
                 )}
             </CardContent>

@@ -17,6 +17,7 @@ export type ExerciseTypeKey =
   | "differences"
   | "pattern_match"
   | "shape_copy"
+  | "analytical_perception"
   | "similarity_ranking"
   | "open_text"
   | "rating_scale"
@@ -58,6 +59,15 @@ const TYPES: TypeInfo[] = [
     measures: "Rule compliance, effort, confidence",
     colour: "border-orange-300 bg-orange-50",
     iconEmoji: "✏️",
+    active: true,
+  },
+  {
+    key: "analytical_perception",
+    label: "Analytical Perception",
+    description: "Student counts how many times a section appears in a design",
+    measures: "Analytical perception, attention to detail, visual decomposition",
+    colour: "border-indigo-300 bg-indigo-50",
+    iconEmoji: "🔢",
     active: true,
   },
   {

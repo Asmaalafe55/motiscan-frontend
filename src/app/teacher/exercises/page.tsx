@@ -17,6 +17,7 @@ import { exerciseLibraryService } from "@/services/exerciseLibrary.service";
 import { examService } from "@/services/exam.service";
 import { DifferencesExerciseBuilder } from "@/components/exercises/DifferencesExerciseBuilder";
 import { ShapeCopyExerciseBuilder } from "@/components/exercises/ShapeCopyExerciseBuilder";
+import { AnalyticalPerceptionBuilder } from "@/components/exercises/AnalyticalPerceptionBuilder";
 import { ExercisePreviewModal } from "@/components/exercises/ExercisePreviewModal";
 import { TypeSelectorModal, ExerciseTypeKey } from "@/components/exercises/TypeSelectorModal";
 import type { Exercise } from "@/types";
@@ -74,6 +75,11 @@ const TYPE_META: Record<string, { label: string; badge: string; icon: React.Reac
     label: "Shape Copy",
     badge: "bg-orange-100 text-orange-700 border-orange-200",
     icon: <PenLine className="h-4 w-4 text-orange-500" />,
+  },
+  analytical_perception: {
+    label: "Analytical Perception",
+    badge: "bg-indigo-100 text-indigo-700 border-indigo-200",
+    icon: <SlidersHorizontal className="h-4 w-4 text-indigo-500" />,
   },
   similarity_ranking: {
     label: "Similarity Ranking",
@@ -323,6 +329,20 @@ export default function ExerciseLibraryPage() {
                     </div>
                   )}
 
+                  {/* Thumbnail for analytical_perception — show first cell design SVG */}
+                  {ex.type === "analytical_perception" && ex.question.analyticalPerceptionConfig?.cells?.[0]?.design_svg && (
+                    <div className="grid grid-cols-2 gap-1 p-2.5 pb-0">
+                      {ex.question.analyticalPerceptionConfig.cells.slice(0, 2).map((cell) => (
+                        <div
+                          key={cell.cell_label}
+                          className="rounded border border-border bg-white overflow-hidden"
+                          style={{ maxHeight: 80 }}
+                          dangerouslySetInnerHTML={{ __html: cell.design_svg }}
+                        />
+                      ))}
+                    </div>
+                  )}
+
                   <CardHeader className="pb-2 pt-3">
                     <div className="flex items-start gap-2">
                       <div className="mt-0.5">{meta.icon}</div>
@@ -414,6 +434,8 @@ export default function ExerciseLibraryPage() {
                 ? `Edit: ${editExercise.title}`
                 : builderType === "shape_copy"
                 ? "Create Shape Copy Exercise"
+                : builderType === "analytical_perception"
+                ? "Create Analytical Perception Exercise"
                 : "Create Differences Exercise"}
             </DialogTitle>
           </DialogHeader>
@@ -437,6 +459,21 @@ export default function ExerciseLibraryPage() {
           )}
           {builderType === "shape_copy" && (
             <ShapeCopyExerciseBuilder
+              initialData={
+                editExercise
+                  ? {
+                      title: editExercise.title,
+                      instructions: editExercise.instructions,
+                      tags: editExercise.tags.join(", "),
+                    }
+                  : undefined
+              }
+              onSave={handleSave}
+              onCancel={() => { setBuilderOpen(false); setEditExercise(null); }}
+            />
+          )}
+          {builderType === "analytical_perception" && (
+            <AnalyticalPerceptionBuilder
               initialData={
                 editExercise
                   ? {

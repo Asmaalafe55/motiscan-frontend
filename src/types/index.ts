@@ -18,7 +18,8 @@ export type QuestionType =
   | "rating_scale"
   | "likert_scale"
   | "differences"
-  | "shape_copy";
+  | "shape_copy"
+  | "analytical_perception";
 
 export interface DifferenceImages {
   image1Url: string;
@@ -77,6 +78,52 @@ export interface ShapeCopyConfig {
 }
 
 // ---------------------------------------------------------------------------
+// ANALYTICAL_PERCEPTION exercise types
+// ---------------------------------------------------------------------------
+
+/** One cell in the perception grid (e.g. A1, B3) */
+export interface PerceptionCell {
+  cell_label: string;          // e.g. "A1", "B3"
+  design_svg: string;          // SVG string for the complex design
+  section_svg: string;         // SVG string for the section shape
+  correct_answer: number;      // 1-10, teacher-set, never shown to student
+  teacher_notes?: string;
+}
+
+/** Grid size options */
+export type PerceptionGridSize = "2x3" | "2x4" | "3x4";
+
+/** Question-level config for ANALYTICAL_PERCEPTION exercises */
+export interface AnalyticalPerceptionConfig {
+  grid_size: PerceptionGridSize;  // "2x3" | "2x4" | "3x4"
+  cells: PerceptionCell[];
+}
+
+/** Per-item tracking for one cell */
+export interface PerceptionItemTracking {
+  cell_label: string;
+  correct_answer: number;
+  student_answer: number | null;   // null = skipped
+  is_correct: boolean;
+  time_spent_seconds: number;
+  answer_changed: boolean;
+  skipped: boolean;
+}
+
+/** Full tracking payload for an ANALYTICAL_PERCEPTION exercise */
+export interface AnalyticalPerceptionTracking {
+  items: PerceptionItemTracking[];
+  time_started: string;
+  time_submitted?: string;
+  total_time_seconds: number;
+  total_correct: number;
+  total_skipped: number;
+  accuracy_percentage: number;
+  avg_time_per_item_seconds: number;
+  items_answered_changed: number;
+}
+
+// ---------------------------------------------------------------------------
 
 export interface Question {
   id: string;
@@ -91,6 +138,8 @@ export interface Question {
   expectedAnswerNotes?: string; // Teacher-only context for AI
   // For "shape_copy" type
   shapeCopyConfig?: ShapeCopyConfig;
+  // For "analytical_perception" type
+  analyticalPerceptionConfig?: AnalyticalPerceptionConfig;
 }
 
 // AI tracking data specific to the DIFFERENCES exercise type
@@ -184,6 +233,9 @@ export type StudentStatus = "online" | "away" | "submitted";
 export type MeasureDimension =
   | "attention"
   | "analytical_engagement"
+  | "analytical_perception"
+  | "attention_to_detail"
+  | "visual_decomposition"
   | "rule_compliance"
   | "effort"
   | "confidence"
