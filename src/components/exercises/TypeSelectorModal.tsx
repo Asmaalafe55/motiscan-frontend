@@ -16,6 +16,7 @@ import { Lock } from "lucide-react";
 export type ExerciseTypeKey =
   | "differences"
   | "shape_copy"
+  | "analytical_perception"
   | "similarity_ranking"
   | "rating_scale";
 
@@ -46,7 +47,16 @@ const TYPES: TypeInfo[] = [
     measures: "Rule compliance, effort, confidence",
     colour: "border-orange-300 bg-orange-50",
     iconEmoji: "✏️",
-    active: false,
+    active: true,
+  },
+  {
+    key: "analytical_perception",
+    label: "Analytical Perception",
+    description: "Student counts how many times a section appears in a design",
+    measures: "Analytical perception, attention to detail, visual decomposition",
+    colour: "border-indigo-300 bg-indigo-50",
+    iconEmoji: "🔢",
+    active: true,
   },
   {
     key: "similarity_ranking",

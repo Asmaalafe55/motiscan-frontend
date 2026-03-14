@@ -8,6 +8,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DifferencesExercise } from "./DifferencesExercise";
+import { ShapeCopyExercise } from "./ShapeCopyExercise";
+import { AnalyticalPerceptionExercise } from "./AnalyticalPerceptionExercise";
 import type { Exercise, DifferencesTracking } from "@/types";
 import { Eye } from "lucide-react";
 
@@ -41,7 +43,7 @@ export function ExercisePreviewModal({ exercise, open, onClose }: ExercisePrevie
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
         {/* Yellow preview banner */}
         <div className="flex items-center gap-2 rounded-lg border border-yellow-400 bg-yellow-50 px-4 py-2.5 text-sm font-medium text-yellow-800 mb-2">
           <Eye className="h-4 w-4 flex-shrink-0" />
@@ -62,6 +64,18 @@ export function ExercisePreviewModal({ exercise, open, onClose }: ExercisePrevie
               value={previewAnswer}
               onChange={setPreviewAnswer}
               onTrackingUpdate={setTracking}
+            />
+          ) : q.type === "shape_copy" && q.shapeCopyConfig ? (
+            <ShapeCopyExercise
+              instructions={q.text}
+              config={q.shapeCopyConfig}
+              onTrackingUpdate={() => {}}
+            />
+          ) : q.type === "analytical_perception" && q.analyticalPerceptionConfig ? (
+            <AnalyticalPerceptionExercise
+              instructions={q.text}
+              config={q.analyticalPerceptionConfig}
+              onTrackingUpdate={() => {}}
             />
           ) : (
             <p className="text-sm text-muted-foreground italic">
