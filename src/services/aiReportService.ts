@@ -9,7 +9,6 @@ export const EXERCISE_TYPE_MEASURES: Record<string, MeasureDimension[]> = {
   differences:        ["attention", "analytical_engagement"],
   shape_copy:         ["rule_compliance", "effort", "confidence"],
   rating_scale:       ["self_awareness", "honesty_indicators"],
-  pattern_match:      ["cognitive_persistence", "attention"],
   similarity_ranking: ["analytical_engagement", "thoroughness"],
   multiple_choice:    ["analytical_engagement"],
   likert_scale:       ["self_awareness", "emotional_state"],
@@ -456,3 +455,4 @@ export const aiReportService = {
 // Re-export for use in the report page
 export type { MeasureDimension };
 export { DIMENSION_TO_SCORE };
+
