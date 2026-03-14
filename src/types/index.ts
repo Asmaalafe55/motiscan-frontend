@@ -14,7 +14,6 @@ export interface User {
 
 export type QuestionType =
   | "multiple_choice"
-  | "open_text"
   | "rating_scale"
   | "likert_scale"
   | "differences";

@@ -18,9 +18,7 @@ export type ExerciseTypeKey =
   | "pattern_match"
   | "shape_copy"
   | "similarity_ranking"
-  | "open_text"
-  | "rating_scale"
-  | "free_drawing";
+  | "rating_scale";
 
 interface TypeInfo {
   key: ExerciseTypeKey;
@@ -70,30 +68,12 @@ const TYPES: TypeInfo[] = [
     active: false,
   },
   {
-    key: "open_text",
-    label: "Open Text",
-    description: "Student answers a reflective open question",
-    measures: "Emotional state, self-expression depth",
-    colour: "border-yellow-300 bg-yellow-50",
-    iconEmoji: "📝",
-    active: false,
-  },
-  {
     key: "rating_scale",
     label: "Rating Scale",
     description: "Student rates themselves on a 1–10 scale",
     measures: "Self-awareness, honesty indicators",
     colour: "border-pink-300 bg-pink-50",
     iconEmoji: "⭐",
-    active: false,
-  },
-  {
-    key: "free_drawing",
-    label: "Free Drawing",
-    description: "Student draws freely on a canvas",
-    measures: "Creativity engagement, risk-taking",
-    colour: "border-teal-300 bg-teal-50",
-    iconEmoji: "🎨",
     active: false,
   },
 ];

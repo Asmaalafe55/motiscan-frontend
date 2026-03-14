@@ -8,11 +8,9 @@ import { ExerciseAttempt, MeasureDimension } from "@/types";
 export const EXERCISE_TYPE_MEASURES: Record<string, MeasureDimension[]> = {
   differences:        ["attention", "analytical_engagement"],
   shape_copy:         ["rule_compliance", "effort", "confidence"],
-  open_text:          ["emotional_state", "self_expression_depth"],
   rating_scale:       ["self_awareness", "honesty_indicators"],
   pattern_match:      ["cognitive_persistence", "attention"],
   similarity_ranking: ["analytical_engagement", "thoroughness"],
-  free_drawing:       ["creativity", "risk_taking"],
   multiple_choice:    ["analytical_engagement"],
   likert_scale:       ["self_awareness", "emotional_state"],
 };
@@ -190,21 +188,6 @@ function buildAttributionEntry(
       indicator = "warning";
     } else {
       explanation = `Minimal written response (${chars} characters); limited engagement signal.`;
-      indicator = "warning";
-    }
-  } else if (type === "open_text") {
-    const len =
-      typeof attempt.answerValue === "string"
-        ? attempt.answerValue.length
-        : (attempt.charactersTyped ?? 0);
-    if (len > 100) {
-      explanation = `Wrote ${len} characters — detailed response indicating deep self-expression.`;
-      indicator = "positive";
-    } else if (len > 30) {
-      explanation = `Moderate response length (${len} chars); some emotional content detected.`;
-      indicator = "positive";
-    } else {
-      explanation = `Very brief response (${len} chars); limited expressive depth observed.`;
       indicator = "warning";
     }
   } else if (type === "rating_scale") {

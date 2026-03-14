@@ -35,21 +35,18 @@ import {
 // ---------------------------------------------------------------------------
 const TYPE_BADGE: Record<string, string> = {
   differences:     "bg-blue-100 text-blue-700",
-  open_text:       "bg-yellow-100 text-yellow-700",
   rating_scale:    "bg-pink-100 text-pink-700",
   multiple_choice: "bg-sky-100 text-sky-700",
   likert_scale:    "bg-purple-100 text-purple-700",
 };
 const TYPE_LABEL: Record<string, string> = {
   differences:     "Differences",
-  open_text:       "Open Text",
   rating_scale:    "Rating Scale",
   multiple_choice: "Multiple Choice",
   likert_scale:    "Likert Scale",
 };
 const TYPE_ICON: Record<string, React.ReactNode> = {
   differences:     <ImageIcon className="h-3.5 w-3.5" />,
-  open_text:       <BookOpen className="h-3.5 w-3.5" />,
   rating_scale:    <Star className="h-3.5 w-3.5" />,
   multiple_choice: <SlidersHorizontal className="h-3.5 w-3.5" />,
   likert_scale:    <SlidersHorizontal className="h-3.5 w-3.5" />,
