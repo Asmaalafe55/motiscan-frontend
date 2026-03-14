@@ -15,7 +15,6 @@ import { Lock } from "lucide-react";
 
 export type ExerciseTypeKey =
   | "differences"
-  | "pattern_match"
   | "shape_copy"
   | "similarity_ranking"
   | "rating_scale";
@@ -39,15 +38,6 @@ const TYPES: TypeInfo[] = [
     colour: "border-blue-300 bg-blue-50",
     iconEmoji: "🔍",
     active: true,
-  },
-  {
-    key: "pattern_match",
-    label: "Pattern Match",
-    description: "Student matches dot/shape patterns from a model",
-    measures: "Cognitive persistence, attention",
-    colour: "border-purple-300 bg-purple-50",
-    iconEmoji: "🔵",
-    active: false,
   },
   {
     key: "shape_copy",
@@ -139,3 +129,4 @@ export function TypeSelectorModal({ open, onClose, onSelect }: TypeSelectorModal
     </Dialog>
   );
 }
+

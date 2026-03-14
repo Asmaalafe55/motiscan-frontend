@@ -24,7 +24,6 @@ import {
   BookOpen,
   Eye,
   ImageIcon,
-  Library,
   Pencil,
   Plus,
   Search,
@@ -55,11 +54,6 @@ const TYPE_META: Record<string, { label: string; badge: string; icon: React.Reac
   },
   likert_scale: {
     label: "Likert Scale",
-    badge: "bg-purple-100 text-purple-700 border-purple-200",
-    icon: <SlidersHorizontal className="h-4 w-4 text-purple-500" />,
-  },
-  pattern_match: {
-    label: "Pattern Match",
     badge: "bg-purple-100 text-purple-700 border-purple-200",
     icon: <SlidersHorizontal className="h-4 w-4 text-purple-500" />,
   },
@@ -453,3 +447,4 @@ export default function ExerciseLibraryPage() {
     </Layout>
   );
 }
+
