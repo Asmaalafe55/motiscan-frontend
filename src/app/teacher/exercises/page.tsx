@@ -26,7 +26,6 @@ import {
   BookOpen,
   Eye,
   ImageIcon,
-  Library,
   Pencil,
   PenLine,
   Plus,
@@ -46,11 +45,6 @@ const TYPE_META: Record<string, { label: string; badge: string; icon: React.Reac
     badge: "bg-blue-100 text-blue-700 border-blue-200",
     icon: <ImageIcon className="h-4 w-4 text-blue-500" />,
   },
-  open_text: {
-    label: "Open Text",
-    badge: "bg-yellow-100 text-yellow-700 border-yellow-200",
-    icon: <BookOpen className="h-4 w-4 text-yellow-500" />,
-  },
   rating_scale: {
     label: "Rating Scale",
     badge: "bg-pink-100 text-pink-700 border-pink-200",
@@ -63,11 +57,6 @@ const TYPE_META: Record<string, { label: string; badge: string; icon: React.Reac
   },
   likert_scale: {
     label: "Likert Scale",
-    badge: "bg-purple-100 text-purple-700 border-purple-200",
-    icon: <SlidersHorizontal className="h-4 w-4 text-purple-500" />,
-  },
-  pattern_match: {
-    label: "Pattern Match",
     badge: "bg-purple-100 text-purple-700 border-purple-200",
     icon: <SlidersHorizontal className="h-4 w-4 text-purple-500" />,
   },
@@ -85,11 +74,6 @@ const TYPE_META: Record<string, { label: string; badge: string; icon: React.Reac
     label: "Similarity Ranking",
     badge: "bg-green-100 text-green-700 border-green-200",
     icon: <SlidersHorizontal className="h-4 w-4 text-green-500" />,
-  },
-  free_drawing: {
-    label: "Free Drawing",
-    badge: "bg-teal-100 text-teal-700 border-teal-200",
-    icon: <Library className="h-4 w-4 text-teal-500" />,
   },
 };
 
@@ -535,3 +519,4 @@ export default function ExerciseLibraryPage() {
     </Layout>
   );
 }
+

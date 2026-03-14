@@ -15,13 +15,10 @@ import { Lock } from "lucide-react";
 
 export type ExerciseTypeKey =
   | "differences"
-  | "pattern_match"
   | "shape_copy"
   | "analytical_perception"
   | "similarity_ranking"
-  | "open_text"
-  | "rating_scale"
-  | "free_drawing";
+  | "rating_scale";
 
 interface TypeInfo {
   key: ExerciseTypeKey;
@@ -42,15 +39,6 @@ const TYPES: TypeInfo[] = [
     colour: "border-blue-300 bg-blue-50",
     iconEmoji: "🔍",
     active: true,
-  },
-  {
-    key: "pattern_match",
-    label: "Pattern Match",
-    description: "Student matches dot/shape patterns from a model",
-    measures: "Cognitive persistence, attention",
-    colour: "border-purple-300 bg-purple-50",
-    iconEmoji: "🔵",
-    active: false,
   },
   {
     key: "shape_copy",
@@ -80,30 +68,12 @@ const TYPES: TypeInfo[] = [
     active: false,
   },
   {
-    key: "open_text",
-    label: "Open Text",
-    description: "Student answers a reflective open question",
-    measures: "Emotional state, self-expression depth",
-    colour: "border-yellow-300 bg-yellow-50",
-    iconEmoji: "📝",
-    active: false,
-  },
-  {
     key: "rating_scale",
     label: "Rating Scale",
     description: "Student rates themselves on a 1–10 scale",
     measures: "Self-awareness, honesty indicators",
     colour: "border-pink-300 bg-pink-50",
     iconEmoji: "⭐",
-    active: false,
-  },
-  {
-    key: "free_drawing",
-    label: "Free Drawing",
-    description: "Student draws freely on a canvas",
-    measures: "Creativity engagement, risk-taking",
-    colour: "border-teal-300 bg-teal-50",
-    iconEmoji: "🎨",
     active: false,
   },
 ];
@@ -169,3 +139,4 @@ export function TypeSelectorModal({ open, onClose, onSelect }: TypeSelectorModal
     </Dialog>
   );
 }
+

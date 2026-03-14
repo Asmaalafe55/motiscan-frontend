@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>motiscan-frontend — UML Diagrams</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f172a;
+      --surface: #1e293b;
+      --border:  #334155;
+      --accent:  #3b82f6;
+      --text:    #e2e8f0;
+      --muted:   #94a3b8;
+      --success: #22c55e;
+      --radius:  12px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #1e1b4b 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .header-title { display: flex; align-items: center; gap: 12px; }
+    .header-logo {
+      width: 40px; height: 40px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    h1 { font-size: 1.4rem; font-weight: 700; }
+    h1 span { color: var(--accent); }
+    .meta-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill {
+      background: rgba(59,130,246,.15);
+      border: 1px solid rgba(59,130,246,.3);
+      color: #93c5fd;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-family: 'Courier New', monospace;
+    }
+
+    .tab-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      padding: 0 32px;
+      gap: 4px;
+    }
+    .tab-btn {
+      padding: 14px 24px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-badge {
+      background: rgba(59,130,246,.2);
+      color: var(--accent);
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 0.7rem;
+    }
+
+    main { flex: 1; }
+
+    /* Panels: keep both in DOM at all times (visibility swap, not display swap)
+       so SVGs are never rendered inside a display:none container. */
+    .diagram-panel {
+      display: flex;
+      flex-direction: column;
+      padding: 24px 32px;
+      visibility: hidden;
+      height: 0;
+      overflow: hidden;
+    }
+    .diagram-panel.active {
+      visibility: visible;
+      height: auto;
+      overflow: visible;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .panel-title { font-size: 1.1rem; font-weight: 600; }
+    .panel-desc  { color: var(--muted); font-size: 0.82rem; margin-top: 4px; }
+    .panel-actions { display: flex; gap: 8px; }
+    .action-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .action-btn:hover {
+      background: rgba(59,130,246,.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .diagram-wrapper {
+      background: #fff;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: auto;
+      padding: 24px;
+      min-height: 520px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .diagram-wrapper svg { max-width: 100%; height: auto; }
+    .render-placeholder {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      align-self: center;
+    }
+    .render-error {
+      color: #ef4444;
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      padding: 16px;
+      background: #fff5f5;
+      border-radius: 8px;
+      border: 1px solid #fca5a5;
+      width: 100%;
+    }
+
+    .source-toggle { margin-top: 12px; }
+    .source-toggle summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.78rem;
+      user-select: none;
+      padding: 6px 0;
+    }
+    .source-toggle summary:hover { color: var(--text); }
+    .source-code {
+      margin-top: 8px;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      color: #a5d6ff;
+      white-space: pre;
+      overflow-x: auto;
+      max-height: 300px;
+    }
+
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      display: inline-block;
+      margin-right: 6px;
+    }
+
+    @media (max-width: 640px) {
+      header, .tab-bar, .diagram-panel { padding-left: 16px; padding-right: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-title">
+      <div class="header-logo">📐</div>
+      <div>
+        <h1><span>motiscan-frontend</span> — UML Diagrams</h1>
+        <div style="color:var(--muted);font-size:.78rem;margin-top:2px">
+          Auto-generated from HEAD commit · Mermaid.js
+        </div>
+      </div>
+    </div>
+    <div class="meta-pills">
+      <span class="pill">🌿 main</span>
+      <span class="pill">🔖 81625f4</span>
+      <span class="pill">📅 2026-03-07</span>
+      <span class="pill">📁 49 files</span>
+    </div>
+  </header>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="showTab('uc')" id="tab-uc">
+      👥 Use Case Diagram <span class="tab-badge">actors</span>
+    </button>
+    <button class="tab-btn" onclick="showTab('cls')" id="tab-cls">
+      🏗️ Class Diagram <span class="tab-badge">models</span>
+    </button>
+  </div>
+
+  <main>
+    <div class="diagram-panel active" id="panel-uc">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">👥 Use Case Diagram</div>
+          <div class="panel-desc">
+            Actors: Teacher · Student · AI Generator &nbsp;|&nbsp;
+            System boundary: MotiScan Platform &nbsp;|&nbsp;
+            Dashed arrows = include / extend relationships
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button class="action-btn" onclick="downloadSVG('uc')">⬇ Download SVG</button>
+          <button class="action-btn" onclick="copySource('uc')">📋 Copy Mermaid</button>
+        </div>
+      </div>
+      <div class="diagram-wrapper" id="wrapper-uc">
+        <span class="render-placeholder">Rendering…</span>
+      </div>
+      <details class="source-toggle">
+        <summary>▸ Show Mermaid source</summary>
+        <pre class="source-code" id="src-uc"></pre>
+      </details>
+    </div>
+
+    <div class="diagram-panel" id="panel-cls">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">🏗️ Class Diagram</div>
+          <div class="panel-desc">
+            Domain models extracted from TypeScript source on HEAD &nbsp;|&nbsp;
+            Arrows: association, inheritance
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button class="action-btn" onclick="downloadSVG('cls')">⬇ Download SVG</button>
+          <button class="action-btn" onclick="copySource('cls')">📋 Copy Mermaid</button>
+        </div>
+      </div>
+      <div class="diagram-wrapper" id="wrapper-cls">
+        <span class="render-placeholder">Rendering…</span>
+      </div>
+      <details class="source-toggle">
+        <summary>▸ Show Mermaid source</summary>
+        <pre class="source-code" id="src-cls"></pre>
+      </details>
+    </div>
+  </main>
+
+  <footer>
+    <div><span class="status-dot"></span>Rendered with Mermaid.js 10 from CDN</div>
+    <div>Generated 2026-03-13 17:03:43 UTC &nbsp;·&nbsp; /Users/asmaalafe/source-projects/motiscan-frontend</div>
+  </footer>
+
+  <script>
+    // Diagram sources embedded as JSON strings — no HTML encoding, no DOM tricks.
+    var DIAGRAMS = {
+      uc:  "flowchart LR\n\n    %% ── Actors ──────────────────────────────────\n    Teacher([\"👤 Teacher\"]):::actor\n    Student([\"🎓 Student\"]):::actor\n    AIGen([\"🤖 AI Generator\"]):::actor\n\n    subgraph SYS[\"MotiScan Platform\"]\n        direction TB\n\n        subgraph AUTH[\"Authentication\"]\n            UC_login([\"Login\"]):::uc\n        end\n\n        subgraph TEACHER_WS[\"Teacher Workspace\"]\n            n_teacher_dashboard([\"Teacher / Dashboard\"]):::uc\n            n_teacher_exams__id([\"Teacher / Exams / Id\"]):::uc\n            n_teacher_exams_create([\"Teacher / Exams / Create\"]):::uc\n            n_teacher_exams([\"Teacher / Exams\"]):::uc\n            n_teacher_exercises([\"Teacher / Exercises\"]):::uc\n            n_teacher_reports__studentId__examId([\"Teacher / Reports / StudentId / ExamId\"]):::uc\n            n_teacher_reports([\"Teacher / Reports\"]):::uc\n            n_teacher_students([\"Teacher / Students\"]):::uc\n        end\n\n        subgraph STUDENT_WS[\"Student Workspace\"]\n            n_student_dashboard([\"Student / Dashboard\"]):::uc\n            n_student_exam__id([\"Student / Exam / Id\"]):::uc\n            n_student_history([\"Student / History\"]):::uc\n        end\n\n        subgraph AI_ENGINE[\"AI Engine\"]\n            UC_gen([\"🧠 Generate Motivation Report\"]):::uc\n            UC_calc([\"📊 Calculate Dimension Scores\"]):::uc\n            UC_attr([\"🔗 Attribute Scores to Exercises\"]):::uc\n        end\n    end\n\n    %% ── Actor → Use Case ─────────────────────────\n    Teacher --> UC_login\n    Student --> UC_login\n    Teacher --> n_teacher_dashboard\n    Teacher --> n_teacher_exams__id\n    Teacher --> n_teacher_exams_create\n    Teacher --> n_teacher_exams\n    Teacher --> n_teacher_exercises\n    Teacher --> n_teacher_reports__studentId__examId\n    Teacher --> n_teacher_reports\n    Teacher --> n_teacher_students\n    Student --> n_student_dashboard\n    Student --> n_student_exam__id\n    Student --> n_student_history\n    AIGen --> UC_gen\n    AIGen --> UC_calc\n    AIGen --> UC_attr\n\n    %% ── Include / Extend relationships ──────────\n    n_teacher_reports__studentId__examId -.->|include| UC_gen\n    UC_gen -.->|include| UC_calc\n    UC_calc -.->|include| UC_attr\n    n_student_exam__id -.->|extend| UC_calc\n\n    classDef actor fill:#1e3a5f,color:#e2e8f0,stroke:#60a5fa,stroke-width:2px\n    classDef uc    fill:#eff6ff,color:#1e3a5f,stroke:#3b82f6,stroke-width:1.5px",
+      cls: "classDiagram\n    class AttributionEntry {\n        <<interface>>\n        +number exerciseOrder\n        +string exerciseType\n        +MeasureDimensionList measures\n        +string explanation\n        +positive indicator\n    }\n    class ScoreAttribution {\n        <<interface>>\n        +engagement scoreKey\n        +string scoreName\n        +number score\n        +string color\n        +AttributionEntryList entries\n    }\n    class ExerciseBreakdown {\n        <<interface>>\n        +string exerciseId\n        +number order\n        +string type\n        +MeasureDimensionList measures\n        +number durationSeconds\n        +number answerLength\n        +boolean skipped\n        +boolean revisited\n    }\n    class AIReport {\n        <<interface>>\n        +string id\n        +string studentId\n        +string studentName\n        +string examId\n        +string examTitle\n        +string generatedAt\n        +number totalTimeSpent\n        +any scores\n    }\n    class User {\n        <<interface>>\n        +string id\n        +string email\n        +string name\n        +UserRole role\n        +string password\n        +string phone\n        +string grade\n        +string avatarUrl\n    }\n    class Question {\n        <<interface>>\n        +string id\n        +string examId\n        +QuestionType type\n        +string text\n        +stringList options\n        +boolean required\n        +number order\n        +DifferenceImages differenceImages\n    }\n    class DifferencesTracking {\n        <<interface>>\n        +number charactersTyped\n        +number timeToFirstKeystroke\n        +number editsCount\n        +string finalAnswerText\n    }\n    class Exam {\n        <<interface>>\n        +string id\n        +string title\n        +string description\n        +string teacherId\n        +string teacherName\n        +string createdAt\n        +boolean isLive\n        +number duration\n    }\n    class ExamSubmission {\n        <<interface>>\n        +string id\n        +string examId\n        +string studentId\n        +AnswerList answers\n        +string submittedAt\n        +number timeSpent\n    }\n    class Answer {\n        <<interface>>\n        +string questionId\n        +string value\n    }\n    class MotivationReport {\n        <<interface>>\n        +string id\n        +string studentId\n        +string examId\n        +string submittedAt\n        +any scores\n        +number engagement\n        +number confidence\n        +number persistence\n    }\n    class LiveSession {\n        <<interface>>\n        +string examId\n        +stringList connectedStudents\n        +string startedAt\n    }\n    class Exercise {\n        <<interface>>\n        +string id\n        +string title\n        +QuestionType type\n        +string instructions\n        +string content\n        +stringList tags\n        +string createdAt\n        +Question question\n    }\n    class ExamTemplate {\n        <<interface>>\n        +string id\n        +string title\n        +string description\n        +string teacherId\n        +string createdAt\n        +stringList exerciseIds\n    }\n    class ExerciseAttempt {\n        <<interface>>\n        +string examId\n        +string exerciseId\n        +string questionId\n        +string studentId\n        +QuestionType exerciseType\n        +string timeStarted\n        +string timeFirstAnswer\n        +string timeAnswered\n    }\n    class StudentExamSession {\n        <<interface>>\n        +string examId\n        +string studentId\n        +string startedAt\n        +string lastActivityAt\n        +StudentStatus status\n        +number currentExerciseIndex\n        +number totalExercises\n        +ExerciseNavigationEven timeline\n    }\n    class DifferenceImages {\n        <<interface>>\n        +string image1Url\n        +string image2Url\n    }\n    Exam --> Question : contains\n    Exam --> ExerciseAttempt : tracks\n    ExamSubmission --> Answer : contains\n    User --> Exam : creates\n    User --> ExamSubmission : submits\n    StudentExamSession --> ExerciseAttempt : records\n    AIReport --> ExerciseBreakdown : contains\n    AIReport --> ScoreAttribution : contains\n    LiveSession --> User : involves\n    ExamTemplate --> Exercise : references"
+    };
+
+    // Populate source-code blocks
+    document.getElementById('src-uc').textContent  = DIAGRAMS.uc;
+    document.getElementById('src-cls').textContent = DIAGRAMS.cls;
+
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'base',
+      themeVariables: {
+        primaryColor:        '#eff6ff',
+        primaryTextColor:    '#1e3a5f',
+        primaryBorderColor:  '#3b82f6',
+        lineColor:           '#3b82f6',
+        secondaryColor:      '#f0fdf4',
+        tertiaryColor:       '#fefce8',
+        background:          '#ffffff',
+        mainBkg:             '#eff6ff',
+        nodeBorder:          '#3b82f6',
+        clusterBkg:          '#f8fafc',
+        clusterBorder:       '#cbd5e1',
+        titleColor:          '#1e293b',
+        edgeLabelBackground: '#f1f5f9',
+        fontFamily:          'Segoe UI, system-ui, sans-serif',
+        fontSize:            '14px',
+      },
+      flowchart:    { curve: 'basis', useMaxWidth: true },
+      classDiagram: { useMaxWidth: true },
+    });
+
+    async function renderDiagram(id) {
+      const wrapper = document.getElementById('wrapper-' + id);
+      try {
+        const { svg } = await mermaid.render('mermaid_render_' + id, DIAGRAMS[id]);
+        wrapper.innerHTML = svg;
+      } catch (err) {
+        wrapper.innerHTML =
+          '<pre class="render-error">Mermaid error:\n' + err.message + '</pre>';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      renderDiagram('uc');
+      renderDiagram('cls');
+    });
+
+    function showTab(id) {
+      document.querySelectorAll('.tab-btn').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      document.querySelectorAll('.diagram-panel').forEach(function(p) {
+        p.classList.remove('active');
+      });
+      document.getElementById('tab-' + id).classList.add('active');
+      document.getElementById('panel-' + id).classList.add('active');
+    }
+
+    function downloadSVG(id) {
+      var svg = document.querySelector('#wrapper-' + id + ' svg');
+      if (!svg) return alert('Diagram not yet rendered.');
+      var blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = id === 'uc' ? 'use-case-diagram.svg' : 'class-diagram.svg';
+      a.click();
+    }
+
+    function copySource(id) {
+      var src = DIAGRAMS[id];
+      navigator.clipboard.writeText(src).then(function() {
+        var btn = event.currentTarget;
+        var orig = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(function() { btn.textContent = orig; }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>

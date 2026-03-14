@@ -492,18 +492,6 @@ export default function TakeExamPage() {
                 </div>
               )}
 
-              {currentExercise.type === "open_text" && (
-                <Textarea
-                  {...register(`answers.${currentExercise.id}`)}
-                  placeholder="Type your answer here..."
-                  rows={6}
-                  className="mt-2"
-                  onChange={(e) =>
-                    handleAnswerChange(currentExercise.id, currentIndex, e.target.value)
-                  }
-                />
-              )}
-
               {currentExercise.type === "rating_scale" && (
                 <div className="space-y-2 mt-2 max-w-sm">
                   <Label>Rate from 1 to 10</Label>
