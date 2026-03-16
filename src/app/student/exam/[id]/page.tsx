@@ -19,10 +19,17 @@ import {
 import { examService } from "@/services/exam.service";
 import { liveSessionService } from "@/services/liveSession.service";
 import { trackingService } from "@/services/tracking.service";
-import { Exam, Answer, ExerciseAttempt, DifferencesTracking } from "@/types";
+import {
+  Exam,
+  Answer,
+  ExerciseAttempt,
+  DifferencesTracking,
+  PrioritySortTracking,
+} from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { DifferencesExercise } from "@/components/exercises/DifferencesExercise";
+import { PrioritySortExercise } from "@/components/exercises/PrioritySortExercise";
 import { Send } from "lucide-react";
 
 type AnswersForm = { answers: Record<string, string | number> };
@@ -55,6 +62,10 @@ export default function TakeExamPage() {
   // Per-exercise tracking for the DIFFERENCES type (character count, edits, etc.)
   const [differencesTracking, setDifferencesTracking] = useState<
     Record<string, DifferencesTracking>
+  >({});
+  // Per-exercise tracking for the PRIORITY_SORT type
+  const [prioritySortTracking, setPrioritySortTracking] = useState<
+    Record<string, PrioritySortTracking>
   >({});
 
   const { register, handleSubmit, watch, setValue } = useForm<AnswersForm>({
@@ -254,6 +265,7 @@ export default function TakeExamPage() {
         Math.floor((timeLeft.getTime() - timeStarted.getTime()) / 1000);
 
       const diffTracking = differencesTracking[q.id];
+      const priorityTracking = prioritySortTracking[q.id];
       return {
         examId,
         exerciseId: q.id,
@@ -271,8 +283,13 @@ export default function TakeExamPage() {
         revisited: m.revisited,
         charactersTyped: diffTracking?.charactersTyped,
         editsCount: diffTracking?.editsCount,
-        ...(diffTracking
-          ? { metadata: diffTracking as unknown as Record<string, unknown> }
+        ...(diffTracking || priorityTracking
+          ? {
+              metadata: {
+                ...(diffTracking ?? {}),
+                ...(priorityTracking ?? {}),
+              } as Record<string, unknown>,
+            }
           : {}),
       };
     });
@@ -506,6 +523,24 @@ export default function TakeExamPage() {
                       handleAnswerChange(currentExercise.id, currentIndex, val);
                     }}
                     onTrackingUpdate={handleTrackingUpdate}
+                  />
+                )}
+              {currentExercise.type === "priority_sort" &&
+                currentExercise.prioritySortData && (
+                  <PrioritySortExercise
+                    instructions={currentExercise.text}
+                    data={currentExercise.prioritySortData}
+                    value={(currentAnswerValue as string) || ""}
+                    onChange={(val) => {
+                      setValue(`answers.${currentExercise.id}`, val);
+                      handleAnswerChange(currentExercise.id, currentIndex, val);
+                    }}
+                    onTrackingUpdate={(tracking) => {
+                      setPrioritySortTracking((prev) => ({
+                        ...prev,
+                        [currentExercise.id]: tracking,
+                      }));
+                    }}
                   />
                 )}
             </CardContent>

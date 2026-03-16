@@ -12,6 +12,7 @@ export const EXERCISE_TYPE_MEASURES: Record<string, MeasureDimension[]> = {
   similarity_ranking: ["analytical_engagement", "thoroughness"],
   multiple_choice:    ["analytical_engagement"],
   likert_scale:       ["self_awareness", "emotional_state"],
+  priority_sort:      ["decision_making", "focus", "goal_clarity"],
 };
 
 // Which measure dimensions roll up into which top-level score.
@@ -220,6 +221,50 @@ function buildAttributionEntry(
     } else {
       explanation = "Selected answer decisively without backtracking — direct analytical decision.";
       indicator = "positive";
+    }
+  } else if (type === "priority_sort") {
+    const meta = (attempt.metadata ?? {}) as Record<string, unknown>;
+    const totalMoves = typeof meta.total_moves === "number" ? meta.total_moves : 0;
+    const reorderCount = typeof meta.reorder_count === "number" ? meta.reorder_count : 0;
+    const ttfm = typeof meta.time_to_first_move === "number" ? meta.time_to_first_move : undefined;
+    const timeSpent =
+      typeof meta.time_spent_seconds === "number" ? meta.time_spent_seconds : undefined;
+
+    // decision_making: fewer reorders suggests decisive choices
+    if (reorderCount <= 1 && totalMoves <= 6) {
+      explanation =
+        "Chose a priority order with very few reorders, suggesting decisive decision-making and clear internal criteria.";
+      indicator = "positive";
+    } else if (reorderCount <= 4) {
+      explanation =
+        "Adjusted the priority order a few times, indicating exploratory decision-making before settling on a final ranking.";
+      indicator = "warning";
+    } else {
+      explanation =
+        "Reordered tasks many times before settling, which may reflect uncertainty about priorities or difficulty committing to decisions.";
+      indicator = "low";
+    }
+
+    // focus: shorter time_to_first_move implies quick engagement
+    if (ttfm !== undefined && ttfm > 10) {
+      explanation += ` Took over ${Math.round(
+        ttfm
+      )} seconds before the first move, suggesting slower initial focus on the task.`;
+    }
+
+    // goal_clarity: how many moves were actual reorders vs initial placements
+    if (totalMoves > 0) {
+      const reorderRatio = reorderCount / totalMoves;
+      if (reorderRatio < 0.3) {
+        explanation += " Most moves were initial placements, pointing to strong clarity about goals.";
+      } else if (reorderRatio > 0.6) {
+        explanation +=
+          " A large share of moves were reorders, which may indicate shifting priorities or limited goal clarity.";
+      }
+    }
+
+    if (timeSpent !== undefined && timeSpent > 240) {
+      explanation += " Spent a long time on this ranking, which could reflect deep reflection or indecision.";
     }
   } else {
     // Generic fallback for future exercise types

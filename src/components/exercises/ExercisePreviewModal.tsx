@@ -8,7 +8,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DifferencesExercise } from "./DifferencesExercise";
-import type { Exercise, DifferencesTracking } from "@/types";
+import { PrioritySortExercise } from "./PrioritySortExercise";
+import type {
+  Exercise,
+  DifferencesTracking,
+  PrioritySortTracking,
+} from "@/types";
 import { Eye } from "lucide-react";
 
 interface ExercisePreviewModalProps {
@@ -25,13 +30,15 @@ interface ExercisePreviewModalProps {
 export function ExercisePreviewModal({ exercise, open, onClose }: ExercisePreviewModalProps) {
   // Ephemeral answer state — never saved anywhere
   const [previewAnswer, setPreviewAnswer] = useState("");
-  const [, setTracking] = useState<DifferencesTracking | null>(null);
+  const [, setDifferencesTracking] = useState<DifferencesTracking | null>(null);
+  const [, setPrioritySortTracking] = useState<PrioritySortTracking | null>(null);
 
   // Clear state whenever the modal is opened or a different exercise is shown
   useEffect(() => {
     if (open) {
       setPreviewAnswer("");
-      setTracking(null);
+      setDifferencesTracking(null);
+      setPrioritySortTracking(null);
     }
   }, [open, exercise?.id]);
 
@@ -55,15 +62,25 @@ export function ExercisePreviewModal({ exercise, open, onClose }: ExercisePrevie
         </DialogHeader>
 
         <div className="mt-2">
-          {q.type === "differences" && q.differenceImages ? (
+          {q.type === "differences" && q.differenceImages && (
             <DifferencesExercise
               instructions={q.text}
               images={q.differenceImages}
               value={previewAnswer}
               onChange={setPreviewAnswer}
-              onTrackingUpdate={setTracking}
+              onTrackingUpdate={setDifferencesTracking}
             />
-          ) : (
+          )}
+          {q.type === "priority_sort" && q.prioritySortData && (
+            <PrioritySortExercise
+              instructions={q.text}
+              data={q.prioritySortData}
+              value={previewAnswer}
+              onChange={setPreviewAnswer}
+              onTrackingUpdate={setPrioritySortTracking}
+            />
+          )}
+          {q.type !== "differences" && q.type !== "priority_sort" && (
             <p className="text-sm text-muted-foreground italic">
               Preview for <strong>{q.type.replace(/_/g, " ")}</strong> exercises is not yet available.
             </p>
