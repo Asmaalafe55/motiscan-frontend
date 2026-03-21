@@ -19,10 +19,12 @@ import {
 import { examService } from "@/services/exam.service";
 import { liveSessionService } from "@/services/liveSession.service";
 import { trackingService } from "@/services/tracking.service";
-import { Exam, Answer, ExerciseAttempt, DifferencesTracking } from "@/types";
+import { Exam, Answer, ExerciseAttempt, DifferencesTracking, ShapeCopyTracking, AnalyticalPerceptionTracking } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { DifferencesExercise } from "@/components/exercises/DifferencesExercise";
+import { ShapeCopyExercise } from "@/components/exercises/ShapeCopyExercise";
+import { AnalyticalPerceptionExercise } from "@/components/exercises/AnalyticalPerceptionExercise";
 import { Send } from "lucide-react";
 
 type AnswersForm = { answers: Record<string, string | number> };
@@ -55,6 +57,14 @@ export default function TakeExamPage() {
   // Per-exercise tracking for the DIFFERENCES type (character count, edits, etc.)
   const [differencesTracking, setDifferencesTracking] = useState<
     Record<string, DifferencesTracking>
+  >({});
+  // Per-exercise tracking for the SHAPE_COPY type
+  const [shapeCopyTracking, setShapeCopyTracking] = useState<
+    Record<string, ShapeCopyTracking>
+  >({});
+  // Per-exercise tracking for the ANALYTICAL_PERCEPTION type
+  const [analyticalPerceptionTracking, setAnalyticalPerceptionTracking] = useState<
+    Record<string, AnalyticalPerceptionTracking>
   >({});
 
   const { register, handleSubmit, watch, setValue } = useForm<AnswersForm>({
@@ -254,6 +264,8 @@ export default function TakeExamPage() {
         Math.floor((timeLeft.getTime() - timeStarted.getTime()) / 1000);
 
       const diffTracking = differencesTracking[q.id];
+      const scTracking = shapeCopyTracking[q.id];
+      const apTracking = analyticalPerceptionTracking[q.id];
       return {
         examId,
         exerciseId: q.id,
@@ -273,6 +285,12 @@ export default function TakeExamPage() {
         editsCount: diffTracking?.editsCount,
         ...(diffTracking
           ? { metadata: diffTracking as unknown as Record<string, unknown> }
+          : {}),
+        ...(scTracking
+          ? { metadata: scTracking as unknown as Record<string, unknown> }
+          : {}),
+        ...(apTracking
+          ? { metadata: apTracking as unknown as Record<string, unknown> }
           : {}),
       };
     });
@@ -338,6 +356,34 @@ export default function TakeExamPage() {
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [currentExercise?.id]
+  );
+
+  // Stable callback for SHAPE_COPY tracking — same pattern as differences to avoid infinite loops
+  const handleShapeCopyTrackingUpdate = useCallback(
+    (tracking: ShapeCopyTracking) => {
+      setShapeCopyTracking((prev) => ({
+        ...prev,
+        [currentExercise?.id ?? ""]: tracking,
+      }));
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentExercise?.id]
+  );
+
+  // Stable callback for ANALYTICAL_PERCEPTION tracking — same pattern to avoid infinite loops
+  const handleAnalyticalPerceptionTrackingUpdate = useCallback(
+    (tracking: AnalyticalPerceptionTracking) => {
+      setAnalyticalPerceptionTracking((prev) => ({
+        ...prev,
+        [currentExercise?.id ?? ""]: tracking,
+      }));
+      // Mark exercise as answered once at least one item is answered
+      if (tracking.items.some((i) => !i.skipped) && metrics[currentExercise?.id ?? ""]?.skipped !== false) {
+        handleAnswerChange(currentExercise?.id ?? "", currentIndex, "analytical_perception_in_progress");
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentExercise?.id, currentIndex]
   );
 
   if (!exam || !currentExercise) {
@@ -415,8 +461,8 @@ export default function TakeExamPage() {
                 Exercise {currentExercise.order}
                 {currentExercise.required && <span className="text-red-500 ml-1">*</span>}
               </CardTitle>
-              {/* For differences exercises the instructions are rendered inside the component */}
-              {currentExercise.type !== "differences" && (
+              {/* For differences and shape_copy exercises the instructions are rendered inside the component */}
+              {currentExercise.type !== "differences" && currentExercise.type !== "shape_copy" && currentExercise.type !== "analytical_perception" && (
                 <CardDescription className="text-base font-normal mt-2">
                   {currentExercise.text}
                 </CardDescription>
@@ -444,18 +490,6 @@ export default function TakeExamPage() {
                     </label>
                   ))}
                 </div>
-              )}
-
-              {currentExercise.type === "open_text" && (
-                <Textarea
-                  {...register(`answers.${currentExercise.id}`)}
-                  placeholder="Type your answer here..."
-                  rows={6}
-                  className="mt-2"
-                  onChange={(e) =>
-                    handleAnswerChange(currentExercise.id, currentIndex, e.target.value)
-                  }
-                />
               )}
 
               {currentExercise.type === "rating_scale" && (
@@ -518,6 +552,34 @@ export default function TakeExamPage() {
                       handleAnswerChange(currentExercise.id, currentIndex, val);
                     }}
                     onTrackingUpdate={handleTrackingUpdate}
+                  />
+                )}
+
+              {currentExercise.type === "shape_copy" &&
+                currentExercise.shapeCopyConfig && (
+                  <ShapeCopyExercise
+                    instructions={currentExercise.text}
+                    config={currentExercise.shapeCopyConfig}
+                    onTrackingUpdate={(tracking) => {
+                      handleShapeCopyTrackingUpdate(tracking);
+                      // Mark exercise as answered once at least one shape is drawn
+                      const totalShapes = tracking.figures.reduce(
+                        (sum, f) => sum + f.total_shapes_drawn,
+                        0
+                      );
+                      if (totalShapes > 0 && metrics[currentExercise.id]?.skipped !== false) {
+                        handleAnswerChange(currentExercise.id, currentIndex, "drawing_in_progress");
+                      }
+                    }}
+                  />
+                )}
+
+              {currentExercise.type === "analytical_perception" &&
+                currentExercise.analyticalPerceptionConfig && (
+                  <AnalyticalPerceptionExercise
+                    instructions={currentExercise.text}
+                    config={currentExercise.analyticalPerceptionConfig}
+                    onTrackingUpdate={handleAnalyticalPerceptionTrackingUpdate}
                   />
                 )}
             </CardContent>

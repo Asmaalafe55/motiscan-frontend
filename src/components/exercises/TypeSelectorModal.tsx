@@ -15,12 +15,10 @@ import { Lock } from "lucide-react";
 
 export type ExerciseTypeKey =
   | "differences"
-  | "pattern_match"
   | "shape_copy"
+  | "analytical_perception"
   | "similarity_ranking"
-  | "open_text"
-  | "rating_scale"
-  | "free_drawing";
+  | "rating_scale";
 
 interface TypeInfo {
   key: ExerciseTypeKey;
@@ -43,22 +41,22 @@ const TYPES: TypeInfo[] = [
     active: true,
   },
   {
-    key: "pattern_match",
-    label: "Pattern Match",
-    description: "Student matches dot/shape patterns from a model",
-    measures: "Cognitive persistence, attention",
-    colour: "border-purple-300 bg-purple-50",
-    iconEmoji: "🔵",
-    active: false,
-  },
-  {
     key: "shape_copy",
     label: "Shape Copy",
     description: "Student copies a shape following specific rules",
     measures: "Rule compliance, effort, confidence",
     colour: "border-orange-300 bg-orange-50",
     iconEmoji: "✏️",
-    active: false,
+    active: true,
+  },
+  {
+    key: "analytical_perception",
+    label: "Analytical Perception",
+    description: "Student counts how many times a section appears in a design",
+    measures: "Analytical perception, attention to detail, visual decomposition",
+    colour: "border-indigo-300 bg-indigo-50",
+    iconEmoji: "🔢",
+    active: true,
   },
   {
     key: "similarity_ranking",
@@ -70,30 +68,12 @@ const TYPES: TypeInfo[] = [
     active: false,
   },
   {
-    key: "open_text",
-    label: "Open Text",
-    description: "Student answers a reflective open question",
-    measures: "Emotional state, self-expression depth",
-    colour: "border-yellow-300 bg-yellow-50",
-    iconEmoji: "📝",
-    active: false,
-  },
-  {
     key: "rating_scale",
     label: "Rating Scale",
     description: "Student rates themselves on a 1–10 scale",
     measures: "Self-awareness, honesty indicators",
     colour: "border-pink-300 bg-pink-50",
     iconEmoji: "⭐",
-    active: false,
-  },
-  {
-    key: "free_drawing",
-    label: "Free Drawing",
-    description: "Student draws freely on a canvas",
-    measures: "Creativity engagement, risk-taking",
-    colour: "border-teal-300 bg-teal-50",
-    iconEmoji: "🎨",
     active: false,
   },
 ];
@@ -159,3 +139,4 @@ export function TypeSelectorModal({ open, onClose, onSelect }: TypeSelectorModal
     </Dialog>
   );
 }
+
