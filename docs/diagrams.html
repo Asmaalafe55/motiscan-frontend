@@ -90,8 +90,6 @@
 
     main { flex: 1; }
 
-    /* Panels: keep both in DOM at all times (visibility swap, not display swap)
-       so SVGs are never rendered inside a display:none container. */
     .diagram-panel {
       display: flex;
       flex-direction: column;
@@ -140,16 +138,13 @@
       border: 1px solid var(--border);
       overflow: auto;
       padding: 24px;
-      min-height: 520px;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
+      min-height: 900px;
     }
-    .diagram-wrapper svg { max-width: 100%; height: auto; }
+    .diagram-wrapper svg { display: block; height: auto; }
     .render-placeholder {
       color: #94a3b8;
       font-size: 0.9rem;
-      align-self: center;
+      padding: 40px;
     }
     .render-error {
       color: #ef4444;
@@ -223,9 +218,9 @@
     </div>
     <div class="meta-pills">
       <span class="pill">🌿 main</span>
-      <span class="pill">🔖 81625f4</span>
-      <span class="pill">📅 2026-03-07</span>
-      <span class="pill">📁 49 files</span>
+      <span class="pill">🔖 000df79</span>
+      <span class="pill">📅 2026-03-21</span>
+      <span class="pill">📁 50 files</span>
     </div>
   </header>
 
@@ -239,6 +234,7 @@
   </div>
 
   <main>
+    <!-- ── Use Case Panel ───────────────────────────────────────────────── -->
     <div class="diagram-panel active" id="panel-uc">
       <div class="panel-header">
         <div>
@@ -263,13 +259,14 @@
       </details>
     </div>
 
+    <!-- ── Class Diagram Panel ─────────────────────────────────────────── -->
     <div class="diagram-panel" id="panel-cls">
       <div class="panel-header">
         <div>
           <div class="panel-title">🏗️ Class Diagram</div>
           <div class="panel-desc">
-            Domain models extracted from TypeScript source on HEAD &nbsp;|&nbsp;
-            Arrows: association, inheritance
+            22 domain models · 26 relationships &nbsp;|&nbsp;
+            ◁─ inheritance &nbsp;·&nbsp; ◆─ composition &nbsp;·&nbsp; →  association &nbsp;·&nbsp; multiplicity on every line
           </div>
         </div>
         <div class="panel-actions">
@@ -289,90 +286,391 @@
 
   <footer>
     <div><span class="status-dot"></span>Rendered with Mermaid.js 10 from CDN</div>
-    <div>Generated 2026-03-13 17:03:43 UTC &nbsp;·&nbsp; /Users/asmaalafe/source-projects/motiscan-frontend</div>
+    <div>Updated 2026-03-21 &nbsp;·&nbsp; /Users/asmaalafe/source-projects/motiscan-frontend</div>
   </footer>
 
   <script>
-    // Diagram sources embedded as JSON strings — no HTML encoding, no DOM tricks.
-    var DIAGRAMS = {
-      uc:  "flowchart LR\n\n    %% ── Actors ──────────────────────────────────\n    Teacher([\"👤 Teacher\"]):::actor\n    Student([\"🎓 Student\"]):::actor\n    AIGen([\"🤖 AI Generator\"]):::actor\n\n    subgraph SYS[\"MotiScan Platform\"]\n        direction TB\n\n        subgraph AUTH[\"Authentication\"]\n            UC_login([\"Login\"]):::uc\n        end\n\n        subgraph TEACHER_WS[\"Teacher Workspace\"]\n            n_teacher_dashboard([\"Teacher / Dashboard\"]):::uc\n            n_teacher_exams__id([\"Teacher / Exams / Id\"]):::uc\n            n_teacher_exams_create([\"Teacher / Exams / Create\"]):::uc\n            n_teacher_exams([\"Teacher / Exams\"]):::uc\n            n_teacher_exercises([\"Teacher / Exercises\"]):::uc\n            n_teacher_reports__studentId__examId([\"Teacher / Reports / StudentId / ExamId\"]):::uc\n            n_teacher_reports([\"Teacher / Reports\"]):::uc\n            n_teacher_students([\"Teacher / Students\"]):::uc\n        end\n\n        subgraph STUDENT_WS[\"Student Workspace\"]\n            n_student_dashboard([\"Student / Dashboard\"]):::uc\n            n_student_exam__id([\"Student / Exam / Id\"]):::uc\n            n_student_history([\"Student / History\"]):::uc\n        end\n\n        subgraph AI_ENGINE[\"AI Engine\"]\n            UC_gen([\"🧠 Generate Motivation Report\"]):::uc\n            UC_calc([\"📊 Calculate Dimension Scores\"]):::uc\n            UC_attr([\"🔗 Attribute Scores to Exercises\"]):::uc\n        end\n    end\n\n    %% ── Actor → Use Case ─────────────────────────\n    Teacher --> UC_login\n    Student --> UC_login\n    Teacher --> n_teacher_dashboard\n    Teacher --> n_teacher_exams__id\n    Teacher --> n_teacher_exams_create\n    Teacher --> n_teacher_exams\n    Teacher --> n_teacher_exercises\n    Teacher --> n_teacher_reports__studentId__examId\n    Teacher --> n_teacher_reports\n    Teacher --> n_teacher_students\n    Student --> n_student_dashboard\n    Student --> n_student_exam__id\n    Student --> n_student_history\n    AIGen --> UC_gen\n    AIGen --> UC_calc\n    AIGen --> UC_attr\n\n    %% ── Include / Extend relationships ──────────\n    n_teacher_reports__studentId__examId -.->|include| UC_gen\n    UC_gen -.->|include| UC_calc\n    UC_calc -.->|include| UC_attr\n    n_student_exam__id -.->|extend| UC_calc\n\n    classDef actor fill:#1e3a5f,color:#e2e8f0,stroke:#60a5fa,stroke-width:2px\n    classDef uc    fill:#eff6ff,color:#1e3a5f,stroke:#3b82f6,stroke-width:1.5px",
-      cls: "classDiagram\n    class AttributionEntry {\n        <<interface>>\n        +number exerciseOrder\n        +string exerciseType\n        +MeasureDimensionList measures\n        +string explanation\n        +positive indicator\n    }\n    class ScoreAttribution {\n        <<interface>>\n        +engagement scoreKey\n        +string scoreName\n        +number score\n        +string color\n        +AttributionEntryList entries\n    }\n    class ExerciseBreakdown {\n        <<interface>>\n        +string exerciseId\n        +number order\n        +string type\n        +MeasureDimensionList measures\n        +number durationSeconds\n        +number answerLength\n        +boolean skipped\n        +boolean revisited\n    }\n    class AIReport {\n        <<interface>>\n        +string id\n        +string studentId\n        +string studentName\n        +string examId\n        +string examTitle\n        +string generatedAt\n        +number totalTimeSpent\n        +any scores\n    }\n    class User {\n        <<interface>>\n        +string id\n        +string email\n        +string name\n        +UserRole role\n        +string password\n        +string phone\n        +string grade\n        +string avatarUrl\n    }\n    class Question {\n        <<interface>>\n        +string id\n        +string examId\n        +QuestionType type\n        +string text\n        +stringList options\n        +boolean required\n        +number order\n        +DifferenceImages differenceImages\n    }\n    class DifferencesTracking {\n        <<interface>>\n        +number charactersTyped\n        +number timeToFirstKeystroke\n        +number editsCount\n        +string finalAnswerText\n    }\n    class Exam {\n        <<interface>>\n        +string id\n        +string title\n        +string description\n        +string teacherId\n        +string teacherName\n        +string createdAt\n        +boolean isLive\n        +number duration\n    }\n    class ExamSubmission {\n        <<interface>>\n        +string id\n        +string examId\n        +string studentId\n        +AnswerList answers\n        +string submittedAt\n        +number timeSpent\n    }\n    class Answer {\n        <<interface>>\n        +string questionId\n        +string value\n    }\n    class MotivationReport {\n        <<interface>>\n        +string id\n        +string studentId\n        +string examId\n        +string submittedAt\n        +any scores\n        +number engagement\n        +number confidence\n        +number persistence\n    }\n    class LiveSession {\n        <<interface>>\n        +string examId\n        +stringList connectedStudents\n        +string startedAt\n    }\n    class Exercise {\n        <<interface>>\n        +string id\n        +string title\n        +QuestionType type\n        +string instructions\n        +string content\n        +stringList tags\n        +string createdAt\n        +Question question\n    }\n    class ExamTemplate {\n        <<interface>>\n        +string id\n        +string title\n        +string description\n        +string teacherId\n        +string createdAt\n        +stringList exerciseIds\n    }\n    class ExerciseAttempt {\n        <<interface>>\n        +string examId\n        +string exerciseId\n        +string questionId\n        +string studentId\n        +QuestionType exerciseType\n        +string timeStarted\n        +string timeFirstAnswer\n        +string timeAnswered\n    }\n    class StudentExamSession {\n        <<interface>>\n        +string examId\n        +string studentId\n        +string startedAt\n        +string lastActivityAt\n        +StudentStatus status\n        +number currentExerciseIndex\n        +number totalExercises\n        +ExerciseNavigationEven timeline\n    }\n    class DifferenceImages {\n        <<interface>>\n        +string image1Url\n        +string image2Url\n    }\n    Exam --> Question : contains\n    Exam --> ExerciseAttempt : tracks\n    ExamSubmission --> Answer : contains\n    User --> Exam : creates\n    User --> ExamSubmission : submits\n    StudentExamSession --> ExerciseAttempt : records\n    AIReport --> ExerciseBreakdown : contains\n    AIReport --> ScoreAttribution : contains\n    LiveSession --> User : involves\n    ExamTemplate --> Exercise : references"
-    };
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Use-Case diagram source
+  // ═══════════════════════════════════════════════════════════════════════════
+  var UC_SRC = [
+    "flowchart LR",
+    "",
+    "    Teacher([\"👤 Teacher\"]):::actor",
+    "    Student([\"🎓 Student\"]):::actor",
+    "    AIGen([\"🤖 AI Generator\"]):::actor",
+    "",
+    "    subgraph SYS[\"MotiScan Platform\"]",
+    "        direction TB",
+    "        subgraph AUTH[\"Authentication\"]",
+    "            UC_login([\"Login\"]):::uc",
+    "        end",
+    "        subgraph TEACHER_WS[\"Teacher Workspace\"]",
+    "            n_tdash([\"Teacher / Dashboard\"]):::uc",
+    "            n_texam([\"Teacher / Exams\"]):::uc",
+    "            n_texam_id([\"Teacher / Exams / Detail\"]):::uc",
+    "            n_texam_create([\"Teacher / Exams / Create\"]):::uc",
+    "            n_texercises([\"Teacher / Exercises\"]):::uc",
+    "            n_treports([\"Teacher / Reports\"]):::uc",
+    "            n_treport_detail([\"Teacher / Reports / Detail\"]):::uc",
+    "            n_tstudents([\"Teacher / Students\"]):::uc",
+    "        end",
+    "        subgraph STUDENT_WS[\"Student Workspace\"]",
+    "            n_sdash([\"Student / Dashboard\"]):::uc",
+    "            n_sexam([\"Student / Exam / Take\"]):::uc",
+    "            n_shistory([\"Student / History\"]):::uc",
+    "        end",
+    "        subgraph AI_ENGINE[\"AI Engine\"]",
+    "            UC_gen([\"🧠 Generate Motivation Report\"]):::uc",
+    "            UC_calc([\"📊 Calculate Dimension Scores\"]):::uc",
+    "            UC_attr([\"🔗 Attribute Scores to Exercises\"]):::uc",
+    "        end",
+    "    end",
+    "",
+    "    Teacher --> UC_login",
+    "    Student --> UC_login",
+    "    Teacher --> n_tdash",
+    "    Teacher --> n_texam",
+    "    Teacher --> n_texam_id",
+    "    Teacher --> n_texam_create",
+    "    Teacher --> n_texercises",
+    "    Teacher --> n_treports",
+    "    Teacher --> n_treport_detail",
+    "    Teacher --> n_tstudents",
+    "    Student --> n_sdash",
+    "    Student --> n_sexam",
+    "    Student --> n_shistory",
+    "    AIGen --> UC_gen",
+    "    AIGen --> UC_calc",
+    "    AIGen --> UC_attr",
+    "",
+    "    n_treport_detail -.->|include| UC_gen",
+    "    UC_gen -.->|include| UC_calc",
+    "    UC_calc -.->|include| UC_attr",
+    "    n_sexam -.->|extend| UC_calc",
+    "",
+    "    classDef actor fill:#1e3a5f,color:#e2e8f0,stroke:#60a5fa,stroke-width:2px",
+    "    classDef uc    fill:#eff6ff,color:#1e3a5f,stroke:#3b82f6,stroke-width:1.5px"
+  ].join("\n");
 
-    // Populate source-code blocks
-    document.getElementById('src-uc').textContent  = DIAGRAMS.uc;
-    document.getElementById('src-cls').textContent = DIAGRAMS.cls;
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Class diagram source
+  // ═══════════════════════════════════════════════════════════════════════════
+  var CLS_SRC = [
+    "classDiagram",
+    "direction TB",
+    "",
 
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: 'base',
-      themeVariables: {
-        primaryColor:        '#eff6ff',
-        primaryTextColor:    '#1e3a5f',
-        primaryBorderColor:  '#3b82f6',
-        lineColor:           '#3b82f6',
-        secondaryColor:      '#f0fdf4',
-        tertiaryColor:       '#fefce8',
-        background:          '#ffffff',
-        mainBkg:             '#eff6ff',
-        nodeBorder:          '#3b82f6',
-        clusterBkg:          '#f8fafc',
-        clusterBorder:       '#cbd5e1',
-        titleColor:          '#1e293b',
-        edgeLabelBackground: '#f1f5f9',
-        fontFamily:          'Segoe UI, system-ui, sans-serif',
-        fontSize:            '14px',
-      },
-      flowchart:    { curve: 'basis', useMaxWidth: true },
-      classDiagram: { useMaxWidth: true },
+    "%% ── User hierarchy ────────────────────────────────────────────────────",
+    "class User {",
+    "    <<interface>>",
+    "    +string id",
+    "    +string email",
+    "    +string name",
+    "    +UserRole role",
+    "    +string password",
+    "    +string phone",
+    "    +string grade",
+    "    +string avatarUrl",
+    "}",
+    "class Teacher {",
+    "    <<role>>",
+    "    +string id",
+    "    +string name",
+    "    +string email",
+    "}",
+    "class Student {",
+    "    <<role>>",
+    "    +string id",
+    "    +string name",
+    "    +string grade",
+    "}",
+    "User <|-- Teacher",
+    "User <|-- Student",
+    "",
+
+    "%% ── Exercise hierarchy ────────────────────────────────────────────────",
+    "class Exercise {",
+    "    <<interface>>",
+    "    +string id",
+    "    +string title",
+    "    +QuestionType type",
+    "    +string instructions",
+    "    +string content",
+    "    +stringList tags",
+    "    +string createdAt",
+    "    +Question question",
+    "}",
+    "class DifferencesExercise {",
+    "    <<concrete>>",
+    "    +string type",
+    "}",
+    "class ShapeCopyExercise {",
+    "    <<concrete>>",
+    "    +string type",
+    "}",
+    "class AnalyticalPerceptionExercise {",
+    "    <<concrete>>",
+    "    +string type",
+    "}",
+    "Exercise <|-- DifferencesExercise",
+    "Exercise <|-- ShapeCopyExercise",
+    "Exercise <|-- AnalyticalPerceptionExercise",
+    "",
+
+    "%% ── Exam and question structure ───────────────────────────────────────",
+    "class Exam {",
+    "    <<interface>>",
+    "    +string id",
+    "    +string title",
+    "    +string description",
+    "    +string teacherId",
+    "    +string teacherName",
+    "    +string createdAt",
+    "    +boolean isLive",
+    "    +number duration",
+    "}",
+    "class Question {",
+    "    <<interface>>",
+    "    +string id",
+    "    +string examId",
+    "    +QuestionType type",
+    "    +string text",
+    "    +stringList options",
+    "    +boolean required",
+    "    +number order",
+    "    +DifferenceImages differenceImages",
+    "}",
+    "class DifferenceImages {",
+    "    <<interface>>",
+    "    +string image1Url",
+    "    +string image2Url",
+    "}",
+    "class ExamTemplate {",
+    "    <<interface>>",
+    "    +string id",
+    "    +string title",
+    "    +string description",
+    "    +string teacherId",
+    "    +string createdAt",
+    "    +stringList exerciseIds",
+    "}",
+    "class LiveSession {",
+    "    <<interface>>",
+    "    +string examId",
+    "    +stringList connectedStudents",
+    "    +string startedAt",
+    "}",
+    "",
+
+    "%% ── Submission chain ──────────────────────────────────────────────────",
+    "class ExamSubmission {",
+    "    <<interface>>",
+    "    +string id",
+    "    +string examId",
+    "    +string studentId",
+    "    +AnswerList answers",
+    "    +string submittedAt",
+    "    +number timeSpent",
+    "}",
+    "class Answer {",
+    "    <<interface>>",
+    "    +string questionId",
+    "    +string value",
+    "}",
+    "class MotivationReport {",
+    "    <<interface>>",
+    "    +string id",
+    "    +string studentId",
+    "    +string examId",
+    "    +string submittedAt",
+    "    +any scores",
+    "    +number engagement",
+    "    +number confidence",
+    "    +number persistence",
+    "}",
+    "",
+
+    "%% ── Live session tracking ─────────────────────────────────────────────",
+    "class StudentExamSession {",
+    "    <<interface>>",
+    "    +string examId",
+    "    +string studentId",
+    "    +string startedAt",
+    "    +string lastActivityAt",
+    "    +StudentStatus status",
+    "    +number currentExerciseIndex",
+    "    +number totalExercises",
+    "    +ExerciseNavigationEven timeline",
+    "}",
+    "class ExerciseAttempt {",
+    "    <<interface>>",
+    "    +string examId",
+    "    +string exerciseId",
+    "    +string questionId",
+    "    +string studentId",
+    "    +QuestionType exerciseType",
+    "    +string timeStarted",
+    "    +string timeFirstAnswer",
+    "    +string timeAnswered",
+    "}",
+    "class DifferencesTracking {",
+    "    <<interface>>",
+    "    +number charactersTyped",
+    "    +number timeToFirstKeystroke",
+    "    +number editsCount",
+    "    +string finalAnswerText",
+    "}",
+    "",
+
+    "%% ── AI Report chain ───────────────────────────────────────────────────",
+    "class AIReport {",
+    "    <<interface>>",
+    "    +string id",
+    "    +string studentId",
+    "    +string studentName",
+    "    +string examId",
+    "    +string examTitle",
+    "    +string generatedAt",
+    "    +number totalTimeSpent",
+    "    +any scores",
+    "}",
+    "class ScoreAttribution {",
+    "    <<interface>>",
+    "    +engagement scoreKey",
+    "    +string scoreName",
+    "    +number score",
+    "    +string color",
+    "    +AttributionEntryList entries",
+    "}",
+    "class ExerciseBreakdown {",
+    "    <<interface>>",
+    "    +string exerciseId",
+    "    +number order",
+    "    +string type",
+    "    +MeasureDimensionList measures",
+    "    +number durationSeconds",
+    "    +number answerLength",
+    "    +boolean skipped",
+    "    +boolean revisited",
+    "}",
+    "class AttributionEntry {",
+    "    <<interface>>",
+    "    +number exerciseOrder",
+    "    +string exerciseType",
+    "    +MeasureDimensionList measures",
+    "    +string explanation",
+    "    +positive indicator",
+    "}",
+    "",
+
+    "%% ── INHERITANCE ───────────────────────────────────────────────────────",
+    "User <|-- Teacher",
+    "User <|-- Student",
+    "Exercise <|-- DifferencesExercise",
+    "Exercise <|-- ShapeCopyExercise",
+    "Exercise <|-- AnalyticalPerceptionExercise",
+    "",
+
+    "%% ── COMPOSITION (filled diamond) ─────────────────────────────────────",
+    "AIReport \"1\" *-- \"0..*\" ScoreAttribution : contains",
+    "AIReport \"1\" *-- \"0..*\" ExerciseBreakdown : contains",
+    "ScoreAttribution \"1\" *-- \"0..*\" AttributionEntry : contains",
+    "",
+
+    "%% ── ASSOCIATIONS ──────────────────────────────────────────────────────",
+    "Teacher \"1\" --> \"0..*\" Exercise : creates",
+    "Teacher \"1\" --> \"0..*\" Exam : builds",
+    "Teacher \"1\" --> \"0..*\" ExamTemplate : creates",
+    "Exam \"1\" --> \"0..*\" Question : contains",
+    "Exam \"0..*\" --> \"0..*\" Exercise : contains",
+    "Exam \"0..*\" --> \"0..*\" Student : assigned to",
+    "Question \"0..1\" --> \"1\" DifferenceImages : uses",
+    "Exercise \"1\" --> \"1\" Question : has",
+    "ExamTemplate \"1\" --> \"0..*\" Exercise : references",
+    "LiveSession \"1\" --> \"1\" Exam : monitors",
+    "LiveSession --> User : involves",
+    "Student \"1\" --> \"0..*\" StudentExamSession : participates",
+    "User \"1\" --> \"0..*\" ExamSubmission : submits",
+    "ExamSubmission \"1\" --> \"0..*\" Answer : contains",
+    "ExamSubmission \"1\" --> \"0..1\" MotivationReport : generates",
+    "StudentExamSession \"1\" --> \"0..*\" ExerciseAttempt : records",
+    "ExerciseAttempt --> DifferencesTracking : captures",
+    "ExerciseAttempt \"0..*\" --> \"1\" AIReport : generates"
+  ].join("\n");
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  var DIAGRAMS = { uc: UC_SRC, cls: CLS_SRC };
+
+  document.getElementById('src-uc').textContent  = DIAGRAMS.uc;
+  document.getElementById('src-cls').textContent = DIAGRAMS.cls;
+
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    themeVariables: {
+      primaryColor:        '#eff6ff',
+      primaryTextColor:    '#1e3a5f',
+      primaryBorderColor:  '#3b82f6',
+      lineColor:           '#3b82f6',
+      secondaryColor:      '#f0fdf4',
+      tertiaryColor:       '#fefce8',
+      background:          '#ffffff',
+      mainBkg:             '#eff6ff',
+      nodeBorder:          '#3b82f6',
+      clusterBkg:          '#f8fafc',
+      clusterBorder:       '#cbd5e1',
+      titleColor:          '#1e293b',
+      edgeLabelBackground: '#f1f5f9',
+      fontFamily:          'Segoe UI, system-ui, sans-serif',
+      fontSize:            '14px',
+    },
+    flowchart:    { curve: 'basis', useMaxWidth: false },
+    classDiagram: { useMaxWidth: false },
+  });
+
+  async function renderDiagram(id) {
+    var wrapper = document.getElementById('wrapper-' + id);
+    wrapper.innerHTML = '<span class="render-placeholder">Rendering\u2026</span>';
+    try {
+      var result = await mermaid.render('diag_' + id, DIAGRAMS[id]);
+      wrapper.innerHTML = result.svg;
+    } catch (err) {
+      wrapper.innerHTML =
+        '<pre class="render-error">Mermaid render error:\n\n' + err.message + '</pre>';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    renderDiagram('uc');
+    renderDiagram('cls');
+  });
+
+  function showTab(id) {
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.diagram-panel').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById('tab-' + id).classList.add('active');
+    document.getElementById('panel-' + id).classList.add('active');
+  }
+
+  function downloadSVG(id) {
+    var svg = document.querySelector('#wrapper-' + id + ' svg');
+    if (!svg) return alert('Diagram not yet rendered.');
+    var blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = id === 'uc' ? 'use-case-diagram.svg' : 'class-diagram.svg';
+    a.click();
+  }
+
+  function copySource(id) {
+    navigator.clipboard.writeText(DIAGRAMS[id]).then(function() {
+      var btn = event.currentTarget;
+      var orig = btn.textContent;
+      btn.textContent = '\u2713 Copied!';
+      setTimeout(function() { btn.textContent = orig; }, 2000);
     });
-
-    async function renderDiagram(id) {
-      const wrapper = document.getElementById('wrapper-' + id);
-      try {
-        const { svg } = await mermaid.render('mermaid_render_' + id, DIAGRAMS[id]);
-        wrapper.innerHTML = svg;
-      } catch (err) {
-        wrapper.innerHTML =
-          '<pre class="render-error">Mermaid error:\n' + err.message + '</pre>';
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-      renderDiagram('uc');
-      renderDiagram('cls');
-    });
-
-    function showTab(id) {
-      document.querySelectorAll('.tab-btn').forEach(function(b) {
-        b.classList.remove('active');
-      });
-      document.querySelectorAll('.diagram-panel').forEach(function(p) {
-        p.classList.remove('active');
-      });
-      document.getElementById('tab-' + id).classList.add('active');
-      document.getElementById('panel-' + id).classList.add('active');
-    }
-
-    function downloadSVG(id) {
-      var svg = document.querySelector('#wrapper-' + id + ' svg');
-      if (!svg) return alert('Diagram not yet rendered.');
-      var blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = id === 'uc' ? 'use-case-diagram.svg' : 'class-diagram.svg';
-      a.click();
-    }
-
-    function copySource(id) {
-      var src = DIAGRAMS[id];
-      navigator.clipboard.writeText(src).then(function() {
-        var btn = event.currentTarget;
-        var orig = btn.textContent;
-        btn.textContent = '✓ Copied!';
-        setTimeout(function() { btn.textContent = orig; }, 2000);
-      });
-    }
+  }
   </script>
 </body>
 </html>
