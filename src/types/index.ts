@@ -51,10 +51,12 @@ export interface Question {
 
 // AI tracking data specific to the DIFFERENCES exercise type
 export interface DifferencesTracking {
-  charactersTyped: number;
-  timeToFirstKeystroke?: number; // milliseconds from exercise load to first key
-  editsCount: number;            // number of deletion/correction events
-  finalAnswerText: string;
+  characters_typed: number;
+  time_to_first_keystroke?: number; // milliseconds from exercise load to first key
+  edits_count: number;              // number of deletion/correction events
+  time_spent_seconds: number;
+  skipped: boolean;
+  revisited: boolean;
 }
 
 export interface PrioritySortTracking {

@@ -63,7 +63,7 @@ export default function TakeExamPage() {
   const [differencesTracking, setDifferencesTracking] = useState<
     Record<string, DifferencesTracking>
   >({});
-  // Per-exercise tracking for the PRIORITY_SORT type
+  // Per-exercise tracking for the PRIORITY SORT type
   const [prioritySortTracking, setPrioritySortTracking] = useState<
     Record<string, PrioritySortTracking>
   >({});
@@ -281,8 +281,9 @@ export default function TakeExamPage() {
         answerChanged: m.answerChanged,
         skipped: m.skipped && m.answerValue === undefined,
         revisited: m.revisited,
-        charactersTyped: diffTracking?.charactersTyped,
-        editsCount: diffTracking?.editsCount,
+        charactersTyped: diffTracking?.characters_typed,
+        editsCount: diffTracking?.edits_count,
+        timeToFirstKeystroke: diffTracking?.time_to_first_keystroke,
         ...(diffTracking || priorityTracking
           ? {
               metadata: {

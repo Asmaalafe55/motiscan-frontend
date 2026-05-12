@@ -33,6 +33,9 @@ const DIMENSION_TO_SCORE: Record<
   thoroughness:          "persistence",
   creativity:            "emotionalState",
   risk_taking:           "emotionalState",
+  decision_making:       "confidence",
+  focus:                 "engagement",
+  goal_clarity:          "confidence",
 };
 
 // ---------------------------------------------------------------------------
@@ -118,7 +121,7 @@ function computeConfidence(attempts: ExerciseAttempt[]): number {
     if (a.skipped) s -= 35;
     if (a.answerChanged) s -= 12;
     if (a.revisited) s -= 8;
-    if ((a.editsCount ?? 0) > 5) s -= 10;
+    if (a.exerciseType !== "differences" && (a.editsCount ?? 0) > 5) s -= 10;
     return clamp(s, 0, 100);
   });
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
@@ -178,7 +181,9 @@ function buildAttributionEntry(
     const chars = attempt.charactersTyped ?? 0;
     const edits = attempt.editsCount ?? 0;
     if (chars > 120 && edits > 0) {
-      explanation = `Wrote ${chars} characters and refined the answer ${edits} time${edits !== 1 ? "s" : ""} — strong analytical engagement.`;
+      explanation = `Wrote ${chars} characters and refined the answer ${edits} time${
+        edits !== 1 ? "s" : ""
+      } — strong analytical engagement.`;
       indicator = "positive";
     } else if (chars > 50) {
       explanation = `Responded with ${chars} characters; moderate observation level recorded.`;
