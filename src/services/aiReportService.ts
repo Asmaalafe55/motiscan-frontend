@@ -6,13 +6,14 @@ import { ExerciseAttempt, MeasureDimension } from "@/types";
 // ---------------------------------------------------------------------------
 
 export const EXERCISE_TYPE_MEASURES: Record<string, MeasureDimension[]> = {
-  differences:        ["attention", "analytical_engagement"],
-  shape_copy:         ["rule_compliance", "effort", "confidence"],
-  rating_scale:       ["self_awareness", "honesty_indicators"],
-  similarity_ranking: ["analytical_engagement", "thoroughness"],
-  multiple_choice:    ["analytical_engagement"],
-  likert_scale:       ["self_awareness", "emotional_state"],
-  priority_sort:      ["decision_making", "focus", "goal_clarity"],
+  differences:             ["attention", "analytical_engagement"],
+  shape_copy:              ["rule_compliance", "effort", "confidence"],
+  analytical_perception:   ["analytical_perception", "attention_to_detail", "visual_decomposition"],
+  rating_scale:            ["self_awareness", "honesty_indicators"],
+  similarity_ranking:      ["analytical_engagement", "thoroughness"],
+  multiple_choice:         ["analytical_engagement"],
+  likert_scale:            ["self_awareness", "emotional_state"],
+  priority_sort:           ["decision_making", "focus", "goal_clarity"],
 };
 
 // Which measure dimensions roll up into which top-level score.
@@ -20,22 +21,25 @@ const DIMENSION_TO_SCORE: Record<
   MeasureDimension,
   "engagement" | "confidence" | "persistence" | "emotionalState"
 > = {
-  attention:             "engagement",
-  analytical_engagement: "engagement",
-  rule_compliance:       "confidence",
-  effort:                "persistence",
-  confidence:            "confidence",
-  emotional_state:       "emotionalState",
-  self_expression_depth: "emotionalState",
-  self_awareness:        "confidence",
-  honesty_indicators:    "confidence",
-  cognitive_persistence: "persistence",
-  thoroughness:          "persistence",
-  creativity:            "emotionalState",
-  risk_taking:           "emotionalState",
-  decision_making:       "confidence",
-  focus:                 "engagement",
-  goal_clarity:          "confidence",
+  attention:              "engagement",
+  analytical_engagement:  "engagement",
+  analytical_perception:  "engagement",
+  attention_to_detail:    "engagement",
+  visual_decomposition:   "engagement",
+  rule_compliance:        "confidence",
+  effort:                 "persistence",
+  confidence:             "confidence",
+  emotional_state:        "emotionalState",
+  self_expression_depth:  "emotionalState",
+  self_awareness:         "confidence",
+  honesty_indicators:     "confidence",
+  cognitive_persistence:  "persistence",
+  thoroughness:           "persistence",
+  creativity:             "emotionalState",
+  risk_taking:            "emotionalState",
+  decision_making:        "confidence",
+  focus:                  "engagement",
+  goal_clarity:           "confidence",
 };
 
 // ---------------------------------------------------------------------------
@@ -122,6 +126,26 @@ function computeConfidence(attempts: ExerciseAttempt[]): number {
     if (a.answerChanged) s -= 12;
     if (a.revisited) s -= 8;
     if (a.exerciseType !== "differences" && (a.editsCount ?? 0) > 5) s -= 10;
+
+    // SHAPE_COPY: undo_count reduces confidence
+    if (a.exerciseType === "shape_copy") {
+      const meta = a.metadata as { figures?: Array<{ undo_count?: number; shapes_deleted?: number }> } | undefined;
+      const undos = (meta?.figures ?? []).reduce((sum, f) => sum + (f.undo_count ?? 0), 0);
+      const deletions = (meta?.figures ?? []).reduce((sum, f) => sum + (f.shapes_deleted ?? 0), 0);
+      if (undos > 5) s -= 12;
+      else if (undos > 2) s -= 6;
+      if (deletions > 3) s -= 8;
+    }
+
+    // ANALYTICAL_PERCEPTION: many answer changes = low confidence
+    if (a.exerciseType === "analytical_perception") {
+      const meta = a.metadata as { items_answered_changed?: number; accuracy_percentage?: number } | undefined;
+      const changed = meta?.items_answered_changed ?? 0;
+      const acc = meta?.accuracy_percentage ?? 100;
+      if (changed > 4) s -= 15;
+      else if (changed > 2) s -= 8;
+      if (acc < 40) s -= 10;
+    }
     return clamp(s, 0, 100);
   });
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
@@ -136,6 +160,29 @@ function computePersistence(attempts: ExerciseAttempt[]): number {
     if ((a.durationOnExercise ?? 0) > 180) s += 10;
     if ((a.editsCount ?? 0) > 0) s += 5;
     if (a.revisited) s += 5;
+
+    // SHAPE_COPY: shapes_deleted shows effort/persistence
+    if (a.exerciseType === "shape_copy") {
+      const meta = a.metadata as { figures?: Array<{ total_shapes_drawn?: number; shapes_deleted?: number; shapes_moved?: number }> } | undefined;
+      const totalShapes = (meta?.figures ?? []).reduce((sum, f) => sum + (f.total_shapes_drawn ?? 0), 0);
+      const deletions = (meta?.figures ?? []).reduce((sum, f) => sum + (f.shapes_deleted ?? 0), 0);
+      const moved = (meta?.figures ?? []).reduce((sum, f) => sum + (f.shapes_moved ?? 0), 0);
+      if (totalShapes > 4) s += 10;
+      if (deletions > 0) s += 5;  // revision = effort
+      if (moved > 2) s += 5;      // refinement = persistence
+    }
+
+    // ANALYTICAL_PERCEPTION: fewer skips + time spent = more persistent
+    if (a.exerciseType === "analytical_perception") {
+      const meta = a.metadata as { total_skipped?: number; total_time_seconds?: number } | undefined;
+      const skipped = meta?.total_skipped ?? 0;
+      const totalTime = meta?.total_time_seconds ?? 0;
+      if (skipped === 0) s += 15;
+      else if (skipped <= 2) s += 5;
+      else s -= 10;
+      if (totalTime > 120) s += 10;
+    }
+
     return clamp(s, 0, 100);
   });
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
@@ -271,8 +318,77 @@ function buildAttributionEntry(
     if (timeSpent !== undefined && timeSpent > 240) {
       explanation += " Spent a long time on this ranking, which could reflect deep reflection or indecision.";
     }
+  } else if (type === "analytical_perception") {
+    const meta = attempt.metadata as {
+      accuracy_percentage?: number;
+      total_correct?: number;
+      total_skipped?: number;
+      avg_time_per_item_seconds?: number;
+      items_answered_changed?: number;
+      items?: Array<{ skipped?: boolean; is_correct?: boolean }>;
+    } | undefined;
+
+    if (!meta) {
+      explanation = "No analytical perception data recorded.";
+      indicator = "low";
+    } else {
+      const acc = meta.accuracy_percentage ?? 0;
+      const skipped = meta.total_skipped ?? 0;
+      const changed = meta.items_answered_changed ?? 0;
+      const avgTime = meta.avg_time_per_item_seconds ?? 0;
+
+      if (acc >= 75 && skipped === 0) {
+        explanation = `High accuracy (${acc}%) with no skips — strong visual decomposition and analytical perception.`;
+        indicator = "positive";
+      } else if (acc >= 50) {
+        explanation = `Moderate accuracy (${acc}%)${skipped > 0 ? `, ${skipped} item${skipped !== 1 ? "s" : ""} skipped` : ""}${avgTime < 5 ? " — fast responses suggest shallow analysis" : ""}.`;
+        indicator = avgTime < 5 ? "warning" : "positive";
+      } else {
+        explanation = `Low accuracy (${acc}%)${changed > 0 ? ` with ${changed} answer revision${changed !== 1 ? "s" : ""}` : ""} — limited visual decomposition detected.`;
+        indicator = "low";
+      }
+    }
+  } else if (type === "shape_copy") {
+    const meta = attempt.metadata as {
+      figures?: Array<{
+        total_shapes_drawn?: number;
+        shapes_deleted?: number;
+        undo_count?: number;
+        time_first_shape_drawn?: string;
+        time_started?: string;
+        required_rules?: string[];
+      }>;
+    } | undefined;
+
+    if (!meta?.figures || meta.figures.length === 0) {
+      explanation = "No drawing data recorded — exercise may have been skipped.";
+      indicator = "low";
+    } else {
+      const totalShapes = meta.figures.reduce((s, f) => s + (f.total_shapes_drawn ?? 0), 0);
+      const totalDeleted = meta.figures.reduce((s, f) => s + (f.shapes_deleted ?? 0), 0);
+      const totalUndos = meta.figures.reduce((s, f) => s + (f.undo_count ?? 0), 0);
+
+      const engagementDelay = meta.figures.some((f) => {
+        if (!f.time_first_shape_drawn || !f.time_started) return false;
+        const delay = new Date(f.time_first_shape_drawn).getTime() - new Date(f.time_started).getTime();
+        return delay > 10000;
+      });
+
+      if (totalShapes > 4 && totalDeleted > 0) {
+        explanation = `Drew ${totalShapes} shapes across figures with ${totalDeleted} revision${totalDeleted !== 1 ? "s" : ""} — strong effort and rule engagement.`;
+        indicator = "positive";
+      } else if (totalShapes > 2) {
+        explanation = `Completed the drawing task with ${totalShapes} shapes; ${totalUndos} undo${totalUndos !== 1 ? "s" : ""} detected — moderate confidence.`;
+        indicator = totalUndos > 3 ? "warning" : "positive";
+      } else if (totalShapes > 0) {
+        explanation = `Minimal drawing output (${totalShapes} shape${totalShapes !== 1 ? "s" : ""}); limited rule compliance engagement.`;
+        indicator = engagementDelay ? "warning" : "low";
+      } else {
+        explanation = "No shapes drawn — exercise appears unattempted.";
+        indicator = "low";
+      }
+    }
   } else {
-    // Generic fallback for future exercise types
     const dur = attempt.durationOnExercise ?? 0;
     explanation =
       dur > 60
@@ -310,13 +426,27 @@ function buildScoreAttributions(
       key: "engagement",
       name: "Engagement",
       color: "#3b82f6",
-      relevant: ["attention", "analytical_engagement"],
+      relevant: [
+        "attention",
+        "analytical_engagement",
+        "analytical_perception",
+        "attention_to_detail",
+        "visual_decomposition",
+        "focus",
+      ],
     },
     {
       key: "confidence",
       name: "Confidence",
       color: "#8b5cf6",
-      relevant: ["confidence", "rule_compliance", "self_awareness", "honesty_indicators"],
+      relevant: [
+        "confidence",
+        "rule_compliance",
+        "self_awareness",
+        "honesty_indicators",
+        "decision_making",
+        "goal_clarity",
+      ],
     },
     {
       key: "persistence",

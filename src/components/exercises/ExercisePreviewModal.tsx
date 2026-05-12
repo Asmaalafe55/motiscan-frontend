@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import { DifferencesExercise } from "./DifferencesExercise";
 import { PrioritySortExercise } from "./PrioritySortExercise";
+import { ShapeCopyExercise } from "./ShapeCopyExercise";
+import { AnalyticalPerceptionExercise } from "./AnalyticalPerceptionExercise";
 import type {
   Exercise,
   DifferencesTracking,
@@ -45,10 +47,15 @@ export function ExercisePreviewModal({ exercise, open, onClose }: ExercisePrevie
   if (!exercise) return null;
 
   const q = exercise.question;
+  const hasRichPreview =
+    (q.type === "differences" && !!q.differenceImages) ||
+    (q.type === "priority_sort" && !!q.prioritySortData) ||
+    (q.type === "shape_copy" && !!q.shapeCopyConfig) ||
+    (q.type === "analytical_perception" && !!q.analyticalPerceptionConfig);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
         {/* Yellow preview banner */}
         <div className="flex items-center gap-2 rounded-lg border border-yellow-400 bg-yellow-50 px-4 py-2.5 text-sm font-medium text-yellow-800 mb-2">
           <Eye className="h-4 w-4 flex-shrink-0" />
@@ -80,7 +87,21 @@ export function ExercisePreviewModal({ exercise, open, onClose }: ExercisePrevie
               onTrackingUpdate={setPrioritySortTracking}
             />
           )}
-          {q.type !== "differences" && q.type !== "priority_sort" && (
+          {q.type === "shape_copy" && q.shapeCopyConfig && (
+            <ShapeCopyExercise
+              instructions={q.text}
+              config={q.shapeCopyConfig}
+              onTrackingUpdate={() => {}}
+            />
+          )}
+          {q.type === "analytical_perception" && q.analyticalPerceptionConfig && (
+            <AnalyticalPerceptionExercise
+              instructions={q.text}
+              config={q.analyticalPerceptionConfig}
+              onTrackingUpdate={() => {}}
+            />
+          )}
+          {!hasRichPreview && (
             <p className="text-sm text-muted-foreground italic">
               Preview for <strong>{q.type.replace(/_/g, " ")}</strong> exercises is not yet available.
             </p>
