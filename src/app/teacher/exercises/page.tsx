@@ -75,6 +75,11 @@ const TYPE_META: Record<string, { label: string; badge: string; icon: React.Reac
     badge: "bg-green-100 text-green-700 border-green-200",
     icon: <SlidersHorizontal className="h-4 w-4 text-green-500" />,
   },
+  priority_sort: {
+    label: "Priority Sort",
+    badge: "bg-purple-100 text-purple-700 border-purple-200",
+    icon: <SlidersHorizontal className="h-4 w-4 text-purple-500" />,
+  },
 };
 
 const ALL_FILTER = "all";

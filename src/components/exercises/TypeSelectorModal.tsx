@@ -18,7 +18,8 @@ export type ExerciseTypeKey =
   | "shape_copy"
   | "analytical_perception"
   | "similarity_ranking"
-  | "rating_scale";
+  | "rating_scale"
+  | "priority_sort";
 
 interface TypeInfo {
   key: ExerciseTypeKey;
@@ -75,6 +76,15 @@ const TYPES: TypeInfo[] = [
     colour: "border-pink-300 bg-pink-50",
     iconEmoji: "⭐",
     active: false,
+  },
+  {
+    key: "priority_sort",
+    label: "Priority Sort",
+    description: "Student ranks everyday tasks by personal importance",
+    measures: "Decision making, focus, goal clarity",
+    colour: "border-purple-300 bg-purple-50",
+    iconEmoji: "📌",
+    active: true,
   },
 ];
 

@@ -17,12 +17,23 @@ export type QuestionType =
   | "rating_scale"
   | "likert_scale"
   | "differences"
+  | "priority_sort"
   | "shape_copy"
   | "analytical_perception";
 
 export interface DifferenceImages {
   image1Url: string;
   image2Url: string;
+}
+
+export interface PrioritySortTask {
+  id: string;
+  title: string;
+  icon: string;
+}
+
+export interface PrioritySortData {
+  tasks: PrioritySortTask[];
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +146,8 @@ export interface Question {
   // For "differences" type
   differenceImages?: DifferenceImages;
   expectedAnswerNotes?: string; // Teacher-only context for AI
+  // For "priority_sort" type
+  prioritySortData?: PrioritySortData;
   // For "shape_copy" type
   shapeCopyConfig?: ShapeCopyConfig;
   // For "analytical_perception" type
@@ -143,10 +156,21 @@ export interface Question {
 
 // AI tracking data specific to the DIFFERENCES exercise type
 export interface DifferencesTracking {
-  charactersTyped: number;
-  timeToFirstKeystroke?: number; // milliseconds from exercise load to first key
-  editsCount: number;            // number of deletion/correction events
-  finalAnswerText: string;
+  characters_typed: number;
+  time_to_first_keystroke?: number; // milliseconds from exercise load to first key
+  edits_count: number;              // number of deletion/correction events
+  time_spent_seconds: number;
+  skipped: boolean;
+  revisited: boolean;
+}
+
+export interface PrioritySortTracking {
+  final_order: string[];
+  time_to_first_move?: number;   // seconds from mount to first successful move
+  total_moves: number;
+  reorder_count: number;
+  time_spent_seconds: number;
+  skipped: boolean;
 }
 
 export interface Exam {
@@ -245,7 +269,10 @@ export type MeasureDimension =
   | "cognitive_persistence"
   | "thoroughness"
   | "creativity"
-  | "risk_taking";
+  | "risk_taking"
+  | "decision_making"
+  | "focus"
+  | "goal_clarity";
 
 // Tracking per-exercise attempts
 export interface ExerciseAttempt {

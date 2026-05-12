@@ -185,6 +185,36 @@ const mockExercises: Exercise[] = [
     },
   },
   {
+    id: "priority-order-your-tasks",
+    title: "Order Your Tasks",
+    type: "priority_sort",
+    instructions:
+      "Look at the tasks below and drag them into the order that feels most important to you right now. 1 is the most important, and 6 is the least.",
+    content: "",
+    tags: ["motivation", "priorities", "self_reflection"],
+    createdAt: daysAgo(2),
+    question: {
+      id: "priority-order-your-tasks-q",
+      examId: "",
+      type: "priority_sort",
+      text: "Drag each task into the ranking from 1 (most important) to 6 (least important) based on what matters to you right now.",
+      required: true,
+      order: 1,
+      prioritySortData: {
+        tasks: [
+          { id: "finish-homework", title: "Finish Homework", icon: "📚" },
+          { id: "help-a-friend", title: "Help a Friend", icon: "🤝" },
+          { id: "study-for-exam", title: "Study for Exam", icon: "📝" },
+          { id: "sports-activity", title: "Sports Activity", icon: "⚽" },
+          { id: "family-time", title: "Family Time", icon: "🏠" },
+          { id: "free-reading", title: "Free Reading", icon: "📖" },
+        ],
+      },
+      expectedAnswerNotes:
+        "No single correct order. The ranking reflects how the student currently prioritises academic work, relationships, leisure, and family time.",
+    },
+  },
+  {
     id: "diff-kitchen",
     title: "Kitchen Scene",
     type: "differences",

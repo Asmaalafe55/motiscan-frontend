@@ -28,10 +28,12 @@ export function DifferencesExercise({
 
   // Internal tracking state (not in parent form — stored separately and reported up)
   const [tracking, setTracking] = useState<DifferencesTracking>({
-    charactersTyped: value.length,
-    timeToFirstKeystroke: undefined,
-    editsCount: 0,
-    finalAnswerText: value,
+    characters_typed: value.length,
+    time_to_first_keystroke: undefined,
+    edits_count: 0,
+    time_spent_seconds: 0,
+    skipped: value.length === 0,
+    revisited: false,
   });
 
   // Previous text length used to detect deletions (edits)
@@ -41,9 +43,12 @@ export function DifferencesExercise({
     setTracking((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  // Sync character count + finalAnswerText whenever value changes from the outside
+  // Sync character count whenever value changes from the outside
   useEffect(() => {
-    updateTracking({ charactersTyped: value.length, finalAnswerText: value });
+    updateTracking({
+      characters_typed: value.length,
+      skipped: value.length === 0,
+    });
   }, [value, updateTracking]);
 
   // Propagate tracking changes to the parent only when the value genuinely changes,
@@ -69,25 +74,40 @@ export function DifferencesExercise({
     const newText = e.target.value;
     const newLen = newText.length;
     const prevLen = prevLengthRef.current;
+    const timeSpentSeconds = Math.floor((Date.now() - mountedAt.current) / 1000);
 
     setTracking((prev) => {
-      const isFirstKeystroke = prev.timeToFirstKeystroke === undefined && newLen > 0;
+      const isFirstKeystroke = prev.time_to_first_keystroke === undefined && newLen > 0;
       const isEdit = newLen < prevLen; // deletion / backspace
 
       return {
         ...prev,
-        charactersTyped: newLen,
-        timeToFirstKeystroke: isFirstKeystroke
+        characters_typed: newLen,
+        time_to_first_keystroke: isFirstKeystroke
           ? Date.now() - mountedAt.current
-          : prev.timeToFirstKeystroke,
-        editsCount: isEdit ? prev.editsCount + 1 : prev.editsCount,
-        finalAnswerText: newText,
+          : prev.time_to_first_keystroke,
+        edits_count: isEdit ? prev.edits_count + 1 : prev.edits_count,
+        time_spent_seconds: timeSpentSeconds,
+        skipped: newLen === 0,
       };
     });
 
     prevLengthRef.current = newLen;
     onChange(newText);
   };
+
+  // On unmount, finalize time_spent_seconds and mark skipped when empty
+  useEffect(() => {
+    return () => {
+      const timeSpentSeconds = Math.floor((Date.now() - mountedAt.current) / 1000);
+      onTrackingUpdate({
+        ...tracking,
+        time_spent_seconds: timeSpentSeconds,
+        skipped: tracking.characters_typed === 0,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex flex-col gap-6 w-full">
@@ -129,11 +149,11 @@ export function DifferencesExercise({
         />
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">
-            {tracking.charactersTyped} character{tracking.charactersTyped !== 1 ? "s" : ""}
+            {tracking.characters_typed} character{tracking.characters_typed !== 1 ? "s" : ""}
           </span>
-          {tracking.editsCount > 0 && (
+          {tracking.edits_count > 0 && (
             <span className="text-xs text-muted-foreground">
-              {tracking.editsCount} edit{tracking.editsCount !== 1 ? "s" : ""}
+              {tracking.edits_count} edit{tracking.edits_count !== 1 ? "s" : ""}
             </span>
           )}
         </div>

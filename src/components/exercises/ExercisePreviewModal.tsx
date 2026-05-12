@@ -8,9 +8,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DifferencesExercise } from "./DifferencesExercise";
+import { PrioritySortExercise } from "./PrioritySortExercise";
 import { ShapeCopyExercise } from "./ShapeCopyExercise";
 import { AnalyticalPerceptionExercise } from "./AnalyticalPerceptionExercise";
-import type { Exercise, DifferencesTracking } from "@/types";
+import type {
+  Exercise,
+  DifferencesTracking,
+  PrioritySortTracking,
+} from "@/types";
 import { Eye } from "lucide-react";
 
 interface ExercisePreviewModalProps {
@@ -27,19 +32,26 @@ interface ExercisePreviewModalProps {
 export function ExercisePreviewModal({ exercise, open, onClose }: ExercisePreviewModalProps) {
   // Ephemeral answer state — never saved anywhere
   const [previewAnswer, setPreviewAnswer] = useState("");
-  const [, setTracking] = useState<DifferencesTracking | null>(null);
+  const [, setDifferencesTracking] = useState<DifferencesTracking | null>(null);
+  const [, setPrioritySortTracking] = useState<PrioritySortTracking | null>(null);
 
   // Clear state whenever the modal is opened or a different exercise is shown
   useEffect(() => {
     if (open) {
       setPreviewAnswer("");
-      setTracking(null);
+      setDifferencesTracking(null);
+      setPrioritySortTracking(null);
     }
   }, [open, exercise?.id]);
 
   if (!exercise) return null;
 
   const q = exercise.question;
+  const hasRichPreview =
+    (q.type === "differences" && !!q.differenceImages) ||
+    (q.type === "priority_sort" && !!q.prioritySortData) ||
+    (q.type === "shape_copy" && !!q.shapeCopyConfig) ||
+    (q.type === "analytical_perception" && !!q.analyticalPerceptionConfig);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -57,27 +69,39 @@ export function ExercisePreviewModal({ exercise, open, onClose }: ExercisePrevie
         </DialogHeader>
 
         <div className="mt-2">
-          {q.type === "differences" && q.differenceImages ? (
+          {q.type === "differences" && q.differenceImages && (
             <DifferencesExercise
               instructions={q.text}
               images={q.differenceImages}
               value={previewAnswer}
               onChange={setPreviewAnswer}
-              onTrackingUpdate={setTracking}
+              onTrackingUpdate={setDifferencesTracking}
             />
-          ) : q.type === "shape_copy" && q.shapeCopyConfig ? (
+          )}
+          {q.type === "priority_sort" && q.prioritySortData && (
+            <PrioritySortExercise
+              instructions={q.text}
+              data={q.prioritySortData}
+              value={previewAnswer}
+              onChange={setPreviewAnswer}
+              onTrackingUpdate={setPrioritySortTracking}
+            />
+          )}
+          {q.type === "shape_copy" && q.shapeCopyConfig && (
             <ShapeCopyExercise
               instructions={q.text}
               config={q.shapeCopyConfig}
               onTrackingUpdate={() => {}}
             />
-          ) : q.type === "analytical_perception" && q.analyticalPerceptionConfig ? (
+          )}
+          {q.type === "analytical_perception" && q.analyticalPerceptionConfig && (
             <AnalyticalPerceptionExercise
               instructions={q.text}
               config={q.analyticalPerceptionConfig}
               onTrackingUpdate={() => {}}
             />
-          ) : (
+          )}
+          {!hasRichPreview && (
             <p className="text-sm text-muted-foreground italic">
               Preview for <strong>{q.type.replace(/_/g, " ")}</strong> exercises is not yet available.
             </p>

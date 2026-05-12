@@ -6,12 +6,14 @@ import { ExerciseAttempt, MeasureDimension } from "@/types";
 // ---------------------------------------------------------------------------
 
 export const EXERCISE_TYPE_MEASURES: Record<string, MeasureDimension[]> = {
-  differences:        ["attention", "analytical_engagement"],
-  shape_copy:         ["rule_compliance", "effort", "confidence"],
-  rating_scale:       ["self_awareness", "honesty_indicators"],
-  similarity_ranking: ["analytical_engagement", "thoroughness"],
-  multiple_choice:    ["analytical_engagement"],
-  likert_scale:       ["self_awareness", "emotional_state"],
+  differences:             ["attention", "analytical_engagement"],
+  shape_copy:              ["rule_compliance", "effort", "confidence"],
+  analytical_perception:   ["analytical_perception", "attention_to_detail", "visual_decomposition"],
+  rating_scale:            ["self_awareness", "honesty_indicators"],
+  similarity_ranking:      ["analytical_engagement", "thoroughness"],
+  multiple_choice:         ["analytical_engagement"],
+  likert_scale:            ["self_awareness", "emotional_state"],
+  priority_sort:           ["decision_making", "focus", "goal_clarity"],
 };
 
 // Which measure dimensions roll up into which top-level score.
@@ -35,6 +37,9 @@ const DIMENSION_TO_SCORE: Record<
   thoroughness:           "persistence",
   creativity:             "emotionalState",
   risk_taking:            "emotionalState",
+  decision_making:        "confidence",
+  focus:                  "engagement",
+  goal_clarity:           "confidence",
 };
 
 // ---------------------------------------------------------------------------
@@ -120,7 +125,7 @@ function computeConfidence(attempts: ExerciseAttempt[]): number {
     if (a.skipped) s -= 35;
     if (a.answerChanged) s -= 12;
     if (a.revisited) s -= 8;
-    if ((a.editsCount ?? 0) > 5) s -= 10;
+    if (a.exerciseType !== "differences" && (a.editsCount ?? 0) > 5) s -= 10;
 
     // SHAPE_COPY: undo_count reduces confidence
     if (a.exerciseType === "shape_copy") {
@@ -141,7 +146,6 @@ function computeConfidence(attempts: ExerciseAttempt[]): number {
       else if (changed > 2) s -= 8;
       if (acc < 40) s -= 10;
     }
-
     return clamp(s, 0, 100);
   });
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
@@ -224,7 +228,9 @@ function buildAttributionEntry(
     const chars = attempt.charactersTyped ?? 0;
     const edits = attempt.editsCount ?? 0;
     if (chars > 120 && edits > 0) {
-      explanation = `Wrote ${chars} characters and refined the answer ${edits} time${edits !== 1 ? "s" : ""} — strong analytical engagement.`;
+      explanation = `Wrote ${chars} characters and refined the answer ${edits} time${
+        edits !== 1 ? "s" : ""
+      } — strong analytical engagement.`;
       indicator = "positive";
     } else if (chars > 50) {
       explanation = `Responded with ${chars} characters; moderate observation level recorded.`;
@@ -268,6 +274,50 @@ function buildAttributionEntry(
       explanation = "Selected answer decisively without backtracking — direct analytical decision.";
       indicator = "positive";
     }
+  } else if (type === "priority_sort") {
+    const meta = (attempt.metadata ?? {}) as Record<string, unknown>;
+    const totalMoves = typeof meta.total_moves === "number" ? meta.total_moves : 0;
+    const reorderCount = typeof meta.reorder_count === "number" ? meta.reorder_count : 0;
+    const ttfm = typeof meta.time_to_first_move === "number" ? meta.time_to_first_move : undefined;
+    const timeSpent =
+      typeof meta.time_spent_seconds === "number" ? meta.time_spent_seconds : undefined;
+
+    // decision_making: fewer reorders suggests decisive choices
+    if (reorderCount <= 1 && totalMoves <= 6) {
+      explanation =
+        "Chose a priority order with very few reorders, suggesting decisive decision-making and clear internal criteria.";
+      indicator = "positive";
+    } else if (reorderCount <= 4) {
+      explanation =
+        "Adjusted the priority order a few times, indicating exploratory decision-making before settling on a final ranking.";
+      indicator = "warning";
+    } else {
+      explanation =
+        "Reordered tasks many times before settling, which may reflect uncertainty about priorities or difficulty committing to decisions.";
+      indicator = "low";
+    }
+
+    // focus: shorter time_to_first_move implies quick engagement
+    if (ttfm !== undefined && ttfm > 10) {
+      explanation += ` Took over ${Math.round(
+        ttfm
+      )} seconds before the first move, suggesting slower initial focus on the task.`;
+    }
+
+    // goal_clarity: how many moves were actual reorders vs initial placements
+    if (totalMoves > 0) {
+      const reorderRatio = reorderCount / totalMoves;
+      if (reorderRatio < 0.3) {
+        explanation += " Most moves were initial placements, pointing to strong clarity about goals.";
+      } else if (reorderRatio > 0.6) {
+        explanation +=
+          " A large share of moves were reorders, which may indicate shifting priorities or limited goal clarity.";
+      }
+    }
+
+    if (timeSpent !== undefined && timeSpent > 240) {
+      explanation += " Spent a long time on this ranking, which could reflect deep reflection or indecision.";
+    }
   } else if (type === "analytical_perception") {
     const meta = attempt.metadata as {
       accuracy_percentage?: number;
@@ -298,7 +348,8 @@ function buildAttributionEntry(
         indicator = "low";
       }
     }
-  } else if (type === "shape_copy") {    const meta = attempt.metadata as {
+  } else if (type === "shape_copy") {
+    const meta = attempt.metadata as {
       figures?: Array<{
         total_shapes_drawn?: number;
         shapes_deleted?: number;
@@ -317,7 +368,6 @@ function buildAttributionEntry(
       const totalDeleted = meta.figures.reduce((s, f) => s + (f.shapes_deleted ?? 0), 0);
       const totalUndos = meta.figures.reduce((s, f) => s + (f.undo_count ?? 0), 0);
 
-      const hasFirstShape = meta.figures.some((f) => f.time_first_shape_drawn != null);
       const engagementDelay = meta.figures.some((f) => {
         if (!f.time_first_shape_drawn || !f.time_started) return false;
         const delay = new Date(f.time_first_shape_drawn).getTime() - new Date(f.time_started).getTime();
@@ -376,13 +426,27 @@ function buildScoreAttributions(
       key: "engagement",
       name: "Engagement",
       color: "#3b82f6",
-      relevant: ["attention", "analytical_engagement", "analytical_perception", "attention_to_detail", "visual_decomposition"],
+      relevant: [
+        "attention",
+        "analytical_engagement",
+        "analytical_perception",
+        "attention_to_detail",
+        "visual_decomposition",
+        "focus",
+      ],
     },
     {
       key: "confidence",
       name: "Confidence",
       color: "#8b5cf6",
-      relevant: ["confidence", "rule_compliance", "self_awareness", "honesty_indicators"],
+      relevant: [
+        "confidence",
+        "rule_compliance",
+        "self_awareness",
+        "honesty_indicators",
+        "decision_making",
+        "goal_clarity",
+      ],
     },
     {
       key: "persistence",

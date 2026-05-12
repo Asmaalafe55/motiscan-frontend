@@ -19,10 +19,19 @@ import {
 import { examService } from "@/services/exam.service";
 import { liveSessionService } from "@/services/liveSession.service";
 import { trackingService } from "@/services/tracking.service";
-import { Exam, Answer, ExerciseAttempt, DifferencesTracking, ShapeCopyTracking, AnalyticalPerceptionTracking } from "@/types";
+import {
+  Exam,
+  Answer,
+  ExerciseAttempt,
+  DifferencesTracking,
+  PrioritySortTracking,
+  ShapeCopyTracking,
+  AnalyticalPerceptionTracking,
+} from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { DifferencesExercise } from "@/components/exercises/DifferencesExercise";
+import { PrioritySortExercise } from "@/components/exercises/PrioritySortExercise";
 import { ShapeCopyExercise } from "@/components/exercises/ShapeCopyExercise";
 import { AnalyticalPerceptionExercise } from "@/components/exercises/AnalyticalPerceptionExercise";
 import { Send } from "lucide-react";
@@ -57,6 +66,10 @@ export default function TakeExamPage() {
   // Per-exercise tracking for the DIFFERENCES type (character count, edits, etc.)
   const [differencesTracking, setDifferencesTracking] = useState<
     Record<string, DifferencesTracking>
+  >({});
+  // Per-exercise tracking for the PRIORITY SORT type
+  const [prioritySortTracking, setPrioritySortTracking] = useState<
+    Record<string, PrioritySortTracking>
   >({});
   // Per-exercise tracking for the SHAPE_COPY type
   const [shapeCopyTracking, setShapeCopyTracking] = useState<
@@ -264,6 +277,7 @@ export default function TakeExamPage() {
         Math.floor((timeLeft.getTime() - timeStarted.getTime()) / 1000);
 
       const diffTracking = differencesTracking[q.id];
+      const priorityTracking = prioritySortTracking[q.id];
       const scTracking = shapeCopyTracking[q.id];
       const apTracking = analyticalPerceptionTracking[q.id];
       return {
@@ -281,10 +295,16 @@ export default function TakeExamPage() {
         answerChanged: m.answerChanged,
         skipped: m.skipped && m.answerValue === undefined,
         revisited: m.revisited,
-        charactersTyped: diffTracking?.charactersTyped,
-        editsCount: diffTracking?.editsCount,
-        ...(diffTracking
-          ? { metadata: diffTracking as unknown as Record<string, unknown> }
+        charactersTyped: diffTracking?.characters_typed,
+        editsCount: diffTracking?.edits_count,
+        timeToFirstKeystroke: diffTracking?.time_to_first_keystroke,
+        ...(diffTracking || priorityTracking
+          ? {
+              metadata: {
+                ...(diffTracking ?? {}),
+                ...(priorityTracking ?? {}),
+              } as Record<string, unknown>,
+            }
           : {}),
         ...(scTracking
           ? { metadata: scTracking as unknown as Record<string, unknown> }
@@ -552,6 +572,24 @@ export default function TakeExamPage() {
                       handleAnswerChange(currentExercise.id, currentIndex, val);
                     }}
                     onTrackingUpdate={handleTrackingUpdate}
+                  />
+                )}
+              {currentExercise.type === "priority_sort" &&
+                currentExercise.prioritySortData && (
+                  <PrioritySortExercise
+                    instructions={currentExercise.text}
+                    data={currentExercise.prioritySortData}
+                    value={(currentAnswerValue as string) || ""}
+                    onChange={(val) => {
+                      setValue(`answers.${currentExercise.id}`, val);
+                      handleAnswerChange(currentExercise.id, currentIndex, val);
+                    }}
+                    onTrackingUpdate={(tracking) => {
+                      setPrioritySortTracking((prev) => ({
+                        ...prev,
+                        [currentExercise.id]: tracking,
+                      }));
+                    }}
                   />
                 )}
 
