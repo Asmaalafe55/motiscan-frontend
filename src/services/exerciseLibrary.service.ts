@@ -215,6 +215,36 @@ const mockExercises: Exercise[] = [
     },
   },
   {
+    id: "priority-school-day-focus",
+    title: "School Day Focus",
+    type: "priority_sort",
+    instructions:
+      "Rank these parts of a typical school day from what matters most to you right now (1 = most important) to what matters least (6).",
+    content: "",
+    tags: ["motivation", "priorities", "school", "self_reflection"],
+    createdAt: daysAgo(4),
+    question: {
+      id: "priority-school-day-focus-q",
+      examId: "",
+      type: "priority_sort",
+      text: "Drag each item into the ranking from 1 (most important) to 6 (least important) for you today.",
+      required: true,
+      order: 1,
+      prioritySortData: {
+        tasks: [
+          { id: "sleep-well", title: "Sleep Well", icon: "😴" },
+          { id: "class-participation", title: "Class Participation", icon: "✋" },
+          { id: "creative-projects", title: "Creative Projects", icon: "🎨" },
+          { id: "friend-time", title: "Friend Time", icon: "👥" },
+          { id: "organized-notes", title: "Organized Notes", icon: "📋" },
+          { id: "quiet-time", title: "Quiet Time Alone", icon: "🌿" },
+        ],
+      },
+      expectedAnswerNotes:
+        "No single correct order. Reflects how the student balances rest, academics, creativity, social life, organization, and downtime.",
+    },
+  },
+  {
     id: "diff-kitchen",
     title: "Kitchen Scene",
     type: "differences",
