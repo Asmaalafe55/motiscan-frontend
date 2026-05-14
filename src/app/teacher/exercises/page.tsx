@@ -19,7 +19,8 @@ import { DifferencesExerciseBuilder } from "@/components/exercises/DifferencesEx
 import { ShapeCopyExerciseBuilder } from "@/components/exercises/ShapeCopyExerciseBuilder";
 import { AnalyticalPerceptionBuilder } from "@/components/exercises/AnalyticalPerceptionBuilder";
 import { ExercisePreviewModal } from "@/components/exercises/ExercisePreviewModal";
-import { TypeSelectorModal, ExerciseTypeKey } from "@/components/exercises/TypeSelectorModal";
+import { TypeSelectorModal } from "@/components/exercises/TypeSelectorModal";
+import type { ExerciseTypeKey } from "@/components/exercises/exerciseTypeCatalog";
 import type { Exercise } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -211,7 +212,7 @@ export default function ExerciseLibraryPage() {
           </div>
           <Button variant="gradient" onClick={() => setTypeSelectorOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Create New Exercise
+            Add New Exercise
           </Button>
         </div>
 
@@ -272,7 +273,7 @@ export default function ExerciseLibraryPage() {
             )}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((ex) => {
               const meta = TYPE_META[ex.type] ?? {
                 label: ex.type,
