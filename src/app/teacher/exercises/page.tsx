@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,8 @@ import { DifferencesExerciseBuilder } from "@/components/exercises/DifferencesEx
 import { ShapeCopyExerciseBuilder } from "@/components/exercises/ShapeCopyExerciseBuilder";
 import { AnalyticalPerceptionBuilder } from "@/components/exercises/AnalyticalPerceptionBuilder";
 import { ExercisePreviewModal } from "@/components/exercises/ExercisePreviewModal";
-import { TypeSelectorModal, ExerciseTypeKey } from "@/components/exercises/TypeSelectorModal";
+import { TypeSelectorModal } from "@/components/exercises/TypeSelectorModal";
+import type { ExerciseTypeKey } from "@/components/exercises/exerciseTypeCatalog";
 import type { Exercise } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -83,6 +84,7 @@ const TYPE_META: Record<string, { label: string; badge: string; icon: React.Reac
 };
 
 const ALL_FILTER = "all";
+const MAX_EXERCISES_PER_TYPE = 2;
 
 // ---------------------------------------------------------------------------
 // Page
@@ -128,6 +130,19 @@ export default function ExerciseLibraryPage() {
     const matchType = typeFilter === ALL_FILTER || ex.type === typeFilter;
     return matchSearch && matchType;
   });
+
+  /** Same order as `filtered`, but at most two cards per exercise `type`. */
+  const displayedExercises = useMemo(() => {
+    const counts = new Map<string, number>();
+    const out: typeof filtered = [];
+    for (const ex of filtered) {
+      const n = counts.get(ex.type) ?? 0;
+      if (n >= MAX_EXERCISES_PER_TYPE) continue;
+      counts.set(ex.type, n + 1);
+      out.push(ex);
+    }
+    return out;
+  }, [filtered]);
 
   // ---- Type selector → builder ---
   const handleTypeSelected = (type: ExerciseTypeKey) => {
@@ -211,7 +226,7 @@ export default function ExerciseLibraryPage() {
           </div>
           <Button variant="gradient" onClick={() => setTypeSelectorOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Create New Exercise
+            Add New Exercise
           </Button>
         </div>
 
@@ -261,7 +276,7 @@ export default function ExerciseLibraryPage() {
           <div className="flex items-center justify-center h-48 text-muted-foreground">
             Loading…
           </div>
-        ) : filtered.length === 0 ? (
+        ) : displayedExercises.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
             <BookOpen className="h-10 w-10 text-muted-foreground/40" />
             <p className="text-muted-foreground">No exercises found</p>
@@ -272,8 +287,8 @@ export default function ExerciseLibraryPage() {
             )}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((ex) => {
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {displayedExercises.map((ex) => {
               const meta = TYPE_META[ex.type] ?? {
                 label: ex.type,
                 badge: "bg-gray-100 text-gray-700 border-gray-200",
