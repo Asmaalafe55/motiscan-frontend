@@ -9,7 +9,7 @@ const encode = (svg: string) =>
 // Differences: sofa colour, lamp position, painting removed, window panes, bookshelf→plant
 // ---------------------------------------------------------------------------
 
-const room1A = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
+const room1A = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280">
   <rect width="400" height="280" fill="#FFF8E1"/>
   <rect y="230" width="400" height="50" fill="#A0826D"/>
   <rect x="0" y="225" width="400" height="8" fill="#8D6E63"/>
@@ -32,7 +32,7 @@ const room1A = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
   <line x1="310" y1="205" x2="370" y2="205" stroke="#4E342E" stroke-width="1.5"/>
 </svg>`;
 
-const room1B = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
+const room1B = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280">
   <rect width="400" height="280" fill="#FFF8E1"/>
   <rect y="230" width="400" height="50" fill="#A0826D"/>
   <rect x="0" y="225" width="400" height="8" fill="#8D6E63"/>
@@ -56,7 +56,7 @@ const room1B = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
 // Differences: sun position, cloud removed, door colour, tree removed, flower colour
 // ---------------------------------------------------------------------------
 
-const garden2A = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
+const garden2A = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280">
   <rect width="400" height="280" fill="#87CEEB"/>
   <rect y="210" width="400" height="70" fill="#4CAF50"/>
   <rect y="208" width="400" height="8" fill="#388E3C"/>
@@ -87,7 +87,7 @@ const garden2A = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
   <rect x="339" y="210" width="5" height="20" fill="#2E7D32"/>
 </svg>`;
 
-const garden2B = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
+const garden2B = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280">
   <rect width="400" height="280" fill="#87CEEB"/>
   <rect y="210" width="400" height="70" fill="#4CAF50"/>
   <rect y="208" width="400" height="8" fill="#388E3C"/>
@@ -118,7 +118,7 @@ const garden2B = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
 // Differences: curtains added, fridge colour, 3→2 cups, pear removed, clock added
 // ---------------------------------------------------------------------------
 
-const kitchen3A = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
+const kitchen3A = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280">
   <rect width="400" height="280" fill="#F0F4F8"/>
   <rect y="185" width="315" height="50" fill="#C8956C"/>
   <rect y="235" width="315" height="45" fill="#A0724A"/>
@@ -150,7 +150,7 @@ const kitchen3A = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280"
   <circle cx="280" cy="182" r="11" fill="#FFA726"/>
 </svg>`;
 
-const kitchen3B = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
+const kitchen3B = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280">
   <rect width="400" height="280" fill="#F0F4F8"/>
   <rect y="185" width="315" height="50" fill="#C8956C"/>
   <rect y="235" width="315" height="45" fill="#A0724A"/>
@@ -191,7 +191,7 @@ const kitchen3B = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280"
 //              fewer bookshelf books, extra small window
 // ---------------------------------------------------------------------------
 
-const classroom4A = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
+const classroom4A = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280">
   <rect width="400" height="280" fill="#FFFDE7"/>
   <rect y="248" width="400" height="32" fill="#D7CCC8"/>
   <rect x="18" y="14" width="222" height="130" rx="4" fill="#4CAF50" stroke="#388E3C" stroke-width="3"/>
@@ -230,7 +230,7 @@ const classroom4A = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 28
   <rect x="335" y="182" width="20" height="28" fill="#607D8B"/>
 </svg>`;
 
-const classroom4B = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280">
+const classroom4B = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280">
   <rect width="400" height="280" fill="#FFFDE7"/>
   <rect y="248" width="400" height="32" fill="#D7CCC8"/>
   <rect x="18" y="14" width="222" height="130" rx="4" fill="#37474F" stroke="#263238" stroke-width="3"/>

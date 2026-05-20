@@ -109,9 +109,26 @@ function computeEngagement(attempts: ExerciseAttempt[]): number {
   const scores = attempts.map((a) => {
     let s = 40;
     if (!a.skipped) s += 20;
-    if ((a.charactersTyped ?? 0) > 30) s += 15;
-    if ((a.charactersTyped ?? 0) > 120) s += 10;
-    if (a.timeToFirstKeystroke !== undefined && a.timeToFirstKeystroke < 4000) s += 10;
+
+    if (a.exerciseType === "differences") {
+      // Click-based tracking — read from metadata
+      const meta = (a.metadata ?? {}) as Record<string, unknown>;
+      const objectsClassified = typeof meta.objects_classified === "number" ? meta.objects_classified : 0;
+      const totalObjects     = typeof meta.total_objects === "number" ? meta.total_objects : 0;
+      const ttfc             = typeof meta.time_to_first_click === "number" ? meta.time_to_first_click : 99999;
+      if (totalObjects > 0) {
+        const ratio = objectsClassified / totalObjects;
+        if (ratio >= 1.0) s += 25;
+        else if (ratio >= 0.5) s += 15;
+        else if (ratio > 0) s += 5;
+      }
+      if (ttfc < 5000) s += 10;
+    } else {
+      if ((a.charactersTyped ?? 0) > 30) s += 15;
+      if ((a.charactersTyped ?? 0) > 120) s += 10;
+      if (a.timeToFirstKeystroke !== undefined && a.timeToFirstKeystroke < 4000) s += 10;
+    }
+
     if ((a.durationOnExercise ?? 0) > 60) s += 5;
     return clamp(s, 0, 100);
   });
@@ -126,6 +143,13 @@ function computeConfidence(attempts: ExerciseAttempt[]): number {
     if (a.answerChanged) s -= 12;
     if (a.revisited) s -= 8;
     if (a.exerciseType !== "differences" && (a.editsCount ?? 0) > 5) s -= 10;
+
+    // DIFFERENCES: low score = lower confidence
+    if (a.exerciseType === "differences") {
+      const meta = (a.metadata ?? {}) as Record<string, unknown>;
+      const score = typeof meta.score === "number" ? meta.score : null;
+      if (score !== null && score < 0.4) s -= 10;
+    }
 
     // SHAPE_COPY: undo_count reduces confidence
     if (a.exerciseType === "shape_copy") {
@@ -160,6 +184,15 @@ function computePersistence(attempts: ExerciseAttempt[]): number {
     if ((a.durationOnExercise ?? 0) > 180) s += 10;
     if ((a.editsCount ?? 0) > 0) s += 5;
     if (a.revisited) s += 5;
+
+    // DIFFERENCES: classifying all objects = high persistence
+    if (a.exerciseType === "differences") {
+      const meta = (a.metadata ?? {}) as Record<string, unknown>;
+      const objectsClassified = typeof meta.objects_classified === "number" ? meta.objects_classified : 0;
+      const totalObjects      = typeof meta.total_objects === "number" ? meta.total_objects : 0;
+      if (totalObjects > 0 && objectsClassified === totalObjects) s += 15;
+      else if (objectsClassified > 0) s += 8;
+    }
 
     // SHAPE_COPY: shapes_deleted shows effort/persistence
     if (a.exerciseType === "shape_copy") {
@@ -224,23 +257,31 @@ function buildAttributionEntry(
   }
 
   if (type === "differences") {
-    const ttfk = attempt.timeToFirstKeystroke ?? 99999;
-    const chars = attempt.charactersTyped ?? 0;
-    const edits = attempt.editsCount ?? 0;
-    if (chars > 120 && edits > 0) {
-      explanation = `Wrote ${chars} characters and refined the answer ${edits} time${
-        edits !== 1 ? "s" : ""
-      } — strong analytical engagement.`;
-      indicator = "positive";
-    } else if (chars > 50) {
-      explanation = `Responded with ${chars} characters; moderate observation level recorded.`;
-      indicator = ttfk < 4000 ? "positive" : "warning";
-    } else if (ttfk > 10000) {
-      explanation = `Delayed start (${Math.round(ttfk / 1000)}s to first keystroke) with limited written output.`;
+    const meta = (attempt.metadata ?? {}) as Record<string, unknown>;
+    const objectsClassified = typeof meta.objects_classified === "number" ? meta.objects_classified : 0;
+    const totalObjects      = typeof meta.total_objects === "number" ? meta.total_objects : 0;
+    const score             = typeof meta.score === "number" ? meta.score : null;
+    const ttfc              = typeof meta.time_to_first_click === "number" ? meta.time_to_first_click : null;
+
+    if (score !== null && totalObjects > 0) {
+      const correct = Math.round(score * totalObjects);
+      const pct = Math.round(score * 100);
+      if (pct >= 80) {
+        explanation = `Classified ${correct}/${totalObjects} objects correctly (${pct}%) — strong visual analytical engagement.`;
+        indicator = "positive";
+      } else if (pct >= 50) {
+        explanation = `Classified ${correct}/${totalObjects} objects correctly (${pct}%) — moderate analytical engagement.`;
+        indicator = ttfc !== null && ttfc < 5000 ? "positive" : "warning";
+      } else {
+        explanation = `Classified ${correct}/${totalObjects} objects correctly (${pct}%) — limited engagement signal.`;
+        indicator = "warning";
+      }
+    } else if (objectsClassified > 0) {
+      explanation = `Selected a change type for ${objectsClassified} of ${totalObjects} objects without submitting for feedback.`;
       indicator = "warning";
     } else {
-      explanation = `Minimal written response (${chars} characters); limited engagement signal.`;
-      indicator = "warning";
+      explanation = "No objects were classified — exercise was skipped.";
+      indicator = "low";
     }
   } else if (type === "rating_scale") {
     const val = typeof attempt.answerValue === "number" ? attempt.answerValue : null;

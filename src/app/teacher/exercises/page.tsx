@@ -333,15 +333,21 @@ export default function ExerciseLibraryPage() {
                     </div>
                   )}
 
-                  {/* Thumbnail for analytical_perception — show first cell design SVG */}
+                  {/* Thumbnail for analytical_perception — first two cell designs as <img> tags.
+                      Using a data-URI avoids the "viewBox-only SVG collapses to 0px" issue
+                      that occurs when raw SVG strings are set via dangerouslySetInnerHTML on
+                      a div with no explicit height. */}
                   {ex.type === "analytical_perception" && ex.question.analyticalPerceptionConfig?.cells?.[0]?.design_svg && (
                     <div className="grid grid-cols-2 gap-1 p-2.5 pb-0">
                       {ex.question.analyticalPerceptionConfig.cells.slice(0, 2).map((cell) => (
-                        <div
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
                           key={cell.cell_label}
-                          className="rounded border border-border bg-white overflow-hidden"
-                          style={{ maxHeight: 80 }}
-                          dangerouslySetInnerHTML={{ __html: cell.design_svg }}
+                          src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(cell.design_svg)}`}
+                          alt={`Cell ${cell.cell_label}`}
+                          className="w-full rounded border border-border object-contain bg-white"
+                          style={{ aspectRatio: "1/1", maxHeight: 80 }}
+                          draggable={false}
                         />
                       ))}
                     </div>
@@ -431,7 +437,7 @@ export default function ExerciseLibraryPage() {
 
       {/* ── Builder modal (create / edit) ── */}
       <Dialog open={builderOpen} onOpenChange={(v) => { if (!v) { setBuilderOpen(false); setEditExercise(null); } }}>
-        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+        <DialogContent className="w-[min(90vw,1200px)] max-w-none max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editExercise
@@ -452,7 +458,7 @@ export default function ExerciseLibraryPage() {
                       instructions: editExercise.instructions,
                       image1Url: editExercise.question.differenceImages?.image1Url,
                       image2Url: editExercise.question.differenceImages?.image2Url,
-                      expectedAnswerNotes: editExercise.question.expectedAnswerNotes,
+                      differenceObjects: editExercise.question.differenceObjects,
                       tags: editExercise.tags.join(", "),
                     }
                   : undefined
@@ -469,6 +475,15 @@ export default function ExerciseLibraryPage() {
                       title: editExercise.title,
                       instructions: editExercise.instructions,
                       tags: editExercise.tags.join(", "),
+                      // Pass existing rows so rules and teacher notes are pre-filled.
+                      // The canvas itself starts blank; captureSnapshots() falls back to
+                      // modelSnapshot so the existing drawing is preserved on save.
+                      rows: editExercise.question.shapeCopyConfig?.rows.map((row) => ({
+                        figureARules: row.figureA_rules,
+                        figureBRules: row.figureB_rules,
+                        teacherNotes: row.teacher_notes ?? "",
+                        modelSnapshot: row.model_snapshot,
+                      })),
                     }
                   : undefined
               }
@@ -484,6 +499,9 @@ export default function ExerciseLibraryPage() {
                       title: editExercise.title,
                       instructions: editExercise.instructions,
                       tags: editExercise.tags.join(", "),
+                      grid_size: editExercise.question.analyticalPerceptionConfig?.grid_size,
+                      // Pass existing cells so design/section images and answer keys are shown
+                      cells: editExercise.question.analyticalPerceptionConfig?.cells,
                     }
                   : undefined
               }

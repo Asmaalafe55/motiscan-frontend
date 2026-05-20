@@ -362,6 +362,24 @@ export function ShapeCopyExerciseBuilder({
             {/* Model canvas */}
             <div className="space-y-1.5">
               <Label>Model Shape <span className="text-muted-foreground font-normal">(draw the reference)</span></Label>
+              {/* When editing, show the saved snapshot so the teacher can see the current model.
+                  The canvas starts blank; drawing replaces the snapshot on save.
+                  Leaving the canvas blank preserves the existing snapshot automatically. */}
+              {row.modelSnapshot && (
+                <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={row.modelSnapshot}
+                    alt="Current model shape"
+                    className="h-16 w-16 flex-shrink-0 rounded border border-amber-200 bg-white object-contain"
+                    draggable={false}
+                  />
+                  <span className="mt-1">
+                    <strong>Current saved model</strong> — the canvas below starts blank.
+                    Draw here to replace this shape, or leave it blank to keep the existing one.
+                  </span>
+                </div>
+              )}
               <ShapeCanvas
                 ref={modelRefs.current[i] as React.RefObject<ShapeCanvasHandle | null>}
                 readOnly={false}
