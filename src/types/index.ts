@@ -26,6 +26,21 @@ export interface DifferenceImages {
   image2Url: string;
 }
 
+/** One object in a Spot-the-Difference exercise that students must classify. */
+export interface DifferenceObject {
+  id: string;
+  /** Display name shown to the student, e.g. "Sun" or "Door" */
+  name: string;
+  /** The change-type buttons to show for this object */
+  changeOptions: string[];
+  /**
+   * All correct change types for this object (can be multiple).
+   * Empty array means "no change" — correct if student selects nothing.
+   * Teacher-set; shown only after the student submits.
+   */
+  correctAnswers: string[];
+}
+
 export interface PrioritySortTask {
   id: string;
   title: string;
@@ -145,6 +160,7 @@ export interface Question {
   order: number;
   // For "differences" type
   differenceImages?: DifferenceImages;
+  differenceObjects?: DifferenceObject[];
   expectedAnswerNotes?: string; // Teacher-only context for AI
   // For "priority_sort" type
   prioritySortData?: PrioritySortData;
@@ -154,14 +170,16 @@ export interface Question {
   analyticalPerceptionConfig?: AnalyticalPerceptionConfig;
 }
 
-// AI tracking data specific to the DIFFERENCES exercise type
+// AI tracking data specific to the DIFFERENCES exercise type (click-based)
 export interface DifferencesTracking {
-  characters_typed: number;
-  time_to_first_keystroke?: number; // milliseconds from exercise load to first key
-  edits_count: number;              // number of deletion/correction events
+  objects_classified: number;        // how many objects the student assigned a change type
+  total_objects: number;             // total objects in the exercise
+  time_to_first_click?: number;      // milliseconds from exercise load to first button click
   time_spent_seconds: number;
   skipped: boolean;
   revisited: boolean;
+  score?: number;                    // 0–1, set after student submits answers
+  total_correct?: number;            // absolute correct count, set after submit
 }
 
 export interface PrioritySortTracking {

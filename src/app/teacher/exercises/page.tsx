@@ -18,6 +18,7 @@ import { examService } from "@/services/exam.service";
 import { DifferencesExerciseBuilder } from "@/components/exercises/DifferencesExerciseBuilder";
 import { ShapeCopyExerciseBuilder } from "@/components/exercises/ShapeCopyExerciseBuilder";
 import { AnalyticalPerceptionBuilder } from "@/components/exercises/AnalyticalPerceptionBuilder";
+import { PrioritySortExerciseBuilder } from "@/components/exercises/PrioritySortExerciseBuilder";
 import { ExercisePreviewModal } from "@/components/exercises/ExercisePreviewModal";
 import { TypeSelectorModal } from "@/components/exercises/TypeSelectorModal";
 import type { ExerciseTypeKey } from "@/components/exercises/exerciseTypeCatalog";
@@ -25,6 +26,7 @@ import type { Exercise } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen,
+  Copy,
   Eye,
   ImageIcon,
   Pencil,
@@ -86,6 +88,10 @@ const TYPE_META: Record<string, { label: string; badge: string; icon: React.Reac
 const ALL_FILTER = "all";
 const MAX_EXERCISES_PER_TYPE = 2;
 
+function duplicateTitle(title: string): string {
+  return `${title} (Copy)`;
+}
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
@@ -101,6 +107,7 @@ export default function ExerciseLibraryPage() {
   const [builderOpen, setBuilderOpen] = useState(false);
   const [builderType, setBuilderType] = useState<ExerciseTypeKey | null>(null);
   const [editExercise, setEditExercise] = useState<Exercise | null>(null);
+  const [duplicateSource, setDuplicateSource] = useState<Exercise | null>(null);
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Exercise | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -149,6 +156,7 @@ export default function ExerciseLibraryPage() {
     setTypeSelectorOpen(false);
     setBuilderType(type);
     setEditExercise(null);
+    setDuplicateSource(null);
     setBuilderOpen(true);
   };
 
@@ -161,19 +169,36 @@ export default function ExerciseLibraryPage() {
       await exerciseLibraryService.createExercise(
         exercise as Parameters<typeof exerciseLibraryService.createExercise>[0]
       );
-      toast({ title: "Exercise saved", description: "Added to your exercise library." });
+      toast({
+        title: duplicateSource ? "Exercise duplicated" : "Exercise saved",
+        description: duplicateSource
+          ? "A copy was added to your exercise library."
+          : "Added to your exercise library.",
+      });
     }
     setBuilderOpen(false);
     setEditExercise(null);
+    setDuplicateSource(null);
     await fetchExercises();
   };
 
   // ---- Edit ----
   const handleEdit = (ex: Exercise) => {
     setEditExercise(ex);
+    setDuplicateSource(null);
     setBuilderType(ex.type as ExerciseTypeKey);
     setBuilderOpen(true);
   };
+
+  const handleDuplicate = (ex: Exercise) => {
+    setEditExercise(null);
+    setDuplicateSource(ex);
+    setBuilderType(ex.type as ExerciseTypeKey);
+    setBuilderOpen(true);
+  };
+
+  const builderSource = editExercise ?? duplicateSource;
+  const builderSessionKey = `${builderType ?? "none"}-${editExercise?.id ?? duplicateSource?.id ?? "new"}-${duplicateSource ? "duplicate" : editExercise ? "edit" : "create"}`;
 
   // ---- Delete ----
   const confirmDelete = async () => {
@@ -333,17 +358,70 @@ export default function ExerciseLibraryPage() {
                     </div>
                   )}
 
-                  {/* Thumbnail for analytical_perception — show first cell design SVG */}
+                  {/* Thumbnail for analytical_perception — first two cell designs as <img> tags.
+                      Using a data-URI avoids the "viewBox-only SVG collapses to 0px" issue
+                      that occurs when raw SVG strings are set via dangerouslySetInnerHTML on
+                      a div with no explicit height. */}
                   {ex.type === "analytical_perception" && ex.question.analyticalPerceptionConfig?.cells?.[0]?.design_svg && (
                     <div className="grid grid-cols-2 gap-1 p-2.5 pb-0">
                       {ex.question.analyticalPerceptionConfig.cells.slice(0, 2).map((cell) => (
-                        <div
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
                           key={cell.cell_label}
-                          className="rounded border border-border bg-white overflow-hidden"
-                          style={{ maxHeight: 80 }}
-                          dangerouslySetInnerHTML={{ __html: cell.design_svg }}
+                          src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(cell.design_svg)}`}
+                          alt={`Cell ${cell.cell_label}`}
+                          className="w-full rounded border border-border object-contain bg-white"
+                          style={{ aspectRatio: "1/1", maxHeight: 80 }}
+                          draggable={false}
                         />
                       ))}
+                    </div>
+                  )}
+
+                  {/* Thumbnail for priority_sort — mini tasks / ranking preview */}
+                  {ex.type === "priority_sort" && ex.question.prioritySortData?.tasks && (
+                    <div className="grid grid-cols-2 gap-1 p-2.5 pb-0">
+                      <div
+                        className="relative rounded border border-dashed border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100/40 p-1.5 flex flex-wrap content-start gap-1 overflow-hidden"
+                        style={{ maxHeight: 80 }}
+                      >
+                        <div
+                          className="pointer-events-none absolute inset-0 opacity-40"
+                          aria-hidden
+                          style={{
+                            backgroundImage:
+                              "radial-gradient(circle at 1px 1px, rgb(139 92 246 / 0.1) 1px, transparent 0)",
+                            backgroundSize: "8px 8px",
+                          }}
+                        />
+                        {ex.question.prioritySortData.tasks.slice(0, 4).map((task) => (
+                          <span
+                            key={task.id}
+                            className="relative inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/90 border border-purple-100 text-xs shadow-sm"
+                            aria-hidden
+                          >
+                            {task.icon}
+                          </span>
+                        ))}
+                      </div>
+                      <div
+                        className="rounded border border-border bg-muted/30 p-1.5 flex flex-col gap-0.5 overflow-hidden"
+                        style={{ maxHeight: 80 }}
+                      >
+                        {ex.question.prioritySortData.tasks.slice(0, 3).map((task, i) => (
+                          <div
+                            key={`rank-${task.id}`}
+                            className="flex items-center gap-1 rounded bg-background/90 border border-border/50 px-1 py-0.5"
+                          >
+                            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[8px] font-bold text-primary">
+                              {i + 1}
+                            </span>
+                            <span className="text-xs leading-none" aria-hidden>
+                              {task.icon}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -408,6 +486,15 @@ export default function ExerciseLibraryPage() {
                       <Button
                         size="sm"
                         variant="outline"
+                        className="flex-1 text-xs"
+                        onClick={() => handleDuplicate(ex)}
+                      >
+                        <Copy className="h-3.5 w-3.5 mr-1" />
+                        Duplicate
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         className="text-xs text-destructive border-destructive/40 hover:bg-destructive/10"
                         onClick={() => { setDeleteTarget(ex); setDeleteError(null); }}
                       >
@@ -430,65 +517,115 @@ export default function ExerciseLibraryPage() {
       />
 
       {/* ── Builder modal (create / edit) ── */}
-      <Dialog open={builderOpen} onOpenChange={(v) => { if (!v) { setBuilderOpen(false); setEditExercise(null); } }}>
-        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+      <Dialog open={builderOpen} onOpenChange={(v) => { if (!v) { setBuilderOpen(false); setEditExercise(null); setDuplicateSource(null); } }}>
+        <DialogContent className="w-[min(90vw,1200px)] max-w-none max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editExercise
                 ? `Edit: ${editExercise.title}`
+                : duplicateSource
+                ? `Duplicate: ${duplicateSource.title}`
                 : builderType === "shape_copy"
                 ? "Create Shape Copy Exercise"
                 : builderType === "analytical_perception"
                 ? "Create Analytical Perception Exercise"
+                : builderType === "priority_sort"
+                ? "Create Priority Sort Exercise"
                 : "Create Differences Exercise"}
             </DialogTitle>
           </DialogHeader>
           {builderType === "differences" && (
             <DifferencesExerciseBuilder
+              key={builderSessionKey}
               initialData={
-                editExercise
+                builderSource
                   ? {
-                      title: editExercise.title,
-                      instructions: editExercise.instructions,
-                      image1Url: editExercise.question.differenceImages?.image1Url,
-                      image2Url: editExercise.question.differenceImages?.image2Url,
-                      expectedAnswerNotes: editExercise.question.expectedAnswerNotes,
-                      tags: editExercise.tags.join(", "),
+                      title: duplicateSource
+                        ? duplicateTitle(builderSource.title)
+                        : builderSource.title,
+                      instructions: builderSource.instructions,
+                      image1Url: builderSource.question.differenceImages?.image1Url,
+                      image2Url: builderSource.question.differenceImages?.image2Url,
+                      differenceObjects: builderSource.question.differenceObjects,
+                      tags: builderSource.tags.join(", "),
                     }
                   : undefined
               }
               onSave={handleSave}
-              onCancel={() => { setBuilderOpen(false); setEditExercise(null); }}
+              onCancel={() => { setBuilderOpen(false); setEditExercise(null); setDuplicateSource(null); }}
             />
           )}
           {builderType === "shape_copy" && (
             <ShapeCopyExerciseBuilder
+              key={builderSessionKey}
               initialData={
-                editExercise
+                builderSource
                   ? {
-                      title: editExercise.title,
-                      instructions: editExercise.instructions,
-                      tags: editExercise.tags.join(", "),
+                      title: duplicateSource
+                        ? duplicateTitle(builderSource.title)
+                        : builderSource.title,
+                      instructions: builderSource.instructions,
+                      tags: builderSource.tags.join(", "),
+                      // Pass existing rows so rules and teacher notes are pre-filled.
+                      // The canvas itself starts blank; captureSnapshots() falls back to
+                      // modelSnapshot so the existing drawing is preserved on save.
+                      rows: builderSource.question.shapeCopyConfig?.rows.map((row) => ({
+                        figureARules: row.figureA_rules,
+                        figureBRules: row.figureB_rules,
+                        teacherNotes: row.teacher_notes ?? "",
+                        modelSnapshot: row.model_snapshot,
+                      })),
                     }
                   : undefined
               }
               onSave={handleSave}
-              onCancel={() => { setBuilderOpen(false); setEditExercise(null); }}
+              onCancel={() => { setBuilderOpen(false); setEditExercise(null); setDuplicateSource(null); }}
             />
           )}
           {builderType === "analytical_perception" && (
             <AnalyticalPerceptionBuilder
+              key={builderSessionKey}
               initialData={
-                editExercise
+                builderSource
                   ? {
-                      title: editExercise.title,
-                      instructions: editExercise.instructions,
-                      tags: editExercise.tags.join(", "),
+                      title: duplicateSource
+                        ? duplicateTitle(builderSource.title)
+                        : builderSource.title,
+                      instructions: builderSource.instructions,
+                      tags: builderSource.tags.join(", "),
+                      grid_size: builderSource.question.analyticalPerceptionConfig?.grid_size,
+                      // Pass existing cells so design/section images and answer keys are shown
+                      cells: builderSource.question.analyticalPerceptionConfig?.cells,
                     }
                   : undefined
               }
               onSave={handleSave}
-              onCancel={() => { setBuilderOpen(false); setEditExercise(null); }}
+              onCancel={() => { setBuilderOpen(false); setEditExercise(null); setDuplicateSource(null); }}
+            />
+          )}
+          {builderType === "priority_sort" && (
+            <PrioritySortExerciseBuilder
+              key={builderSessionKey}
+              initialData={
+                builderSource
+                  ? {
+                      title: duplicateSource
+                        ? duplicateTitle(builderSource.title)
+                        : builderSource.title,
+                      instructions:
+                        builderSource.question.text?.trim() || builderSource.instructions,
+                      expectedAnswerNotes: builderSource.question.expectedAnswerNotes,
+                      tags: builderSource.tags.join(", "),
+                      tasks: builderSource.question.prioritySortData?.tasks?.map((task) => ({
+                        ...task,
+                      })),
+                      questionId: editExercise ? builderSource.question.id : undefined,
+                      createdAt: editExercise ? builderSource.createdAt : undefined,
+                    }
+                  : undefined
+              }
+              onSave={handleSave}
+              onCancel={() => { setBuilderOpen(false); setEditExercise(null); setDuplicateSource(null); }}
             />
           )}
         </DialogContent>

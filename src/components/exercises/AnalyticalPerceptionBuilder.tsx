@@ -90,6 +90,8 @@ interface AnalyticalPerceptionBuilderProps {
     instructions: string;
     tags: string;
     grid_size: PerceptionGridSize;
+    /** Pre-populated cells for edit mode (PerceptionCell from @/types is compatible) */
+    cells: PerceptionCell[];
   }>;
   onSave: (exercise: Omit<Exercise, "id">) => Promise<void>;
   onCancel?: () => void;
@@ -111,9 +113,19 @@ export function AnalyticalPerceptionBuilder({
   );
   const [tags, setTags] = useState(initialData?.tags ?? "analytical, perception, visual");
   const [gridSize, setGridSize] = useState<PerceptionGridSize>(initialData?.grid_size ?? "2x4");
-  const [cells, setCells] = useState<CellDraft[]>(() =>
-    getCellLabels(initialData?.grid_size ?? "2x4").map(makeEmptyCell)
-  );
+  const [cells, setCells] = useState<CellDraft[]>(() => {
+    // If existing cells are provided (edit mode), map them to CellDraft
+    if (initialData?.cells && initialData.cells.length > 0) {
+      return initialData.cells.map((c) => ({
+        cell_label: c.cell_label,
+        design_svg: c.design_svg,
+        section_svg: c.section_svg,
+        correct_answer: c.correct_answer,
+        teacher_notes: c.teacher_notes ?? "",
+      }));
+    }
+    return getCellLabels(initialData?.grid_size ?? "2x4").map(makeEmptyCell);
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -284,15 +296,26 @@ export function AnalyticalPerceptionBuilder({
                 <span className="text-xs font-bold text-indigo-600">{cell.cell_label}</span>
               </div>
 
-              {/* Design preview */}
+              {/* Design preview — img tag prevents SVG overflow */}
               <div className="space-y-1">
                 <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Design</p>
                 {cell.design_svg ? (
-                  <div
-                    className="w-full rounded border border-gray-100 bg-gray-50"
-                    style={{ height: 80 }}
-                    dangerouslySetInnerHTML={{ __html: cell.design_svg }}
-                  />
+                  <div className="relative group" style={{ height: 80 }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(cell.design_svg)}`}
+                      alt="Design"
+                      className="w-full h-full rounded border border-gray-100 bg-gray-50 object-contain"
+                      draggable={false}
+                    />
+                    {/* Hover overlay: click to replace */}
+                    <label className="absolute inset-0 flex items-center justify-center rounded border-2 border-transparent bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                      <span className="text-white text-[10px] font-semibold flex items-center gap-1">
+                        <Upload className="h-3 w-3" /> Replace
+                      </span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, cell.cell_label, "design")} />
+                    </label>
+                  </div>
                 ) : (
                   <label className="flex flex-col items-center justify-center rounded border-2 border-dashed border-gray-200 bg-gray-50 cursor-pointer hover:border-indigo-300 transition-colors" style={{ height: 80 }}>
                     <Upload className="h-4 w-4 text-gray-300 mb-1" />
@@ -302,14 +325,23 @@ export function AnalyticalPerceptionBuilder({
                 )}
               </div>
 
-              {/* Section preview */}
+              {/* Section shape preview — img tag prevents SVG overflow */}
               <div className="space-y-1">
                 <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Section Shape</p>
                 {cell.section_svg ? (
-                  <div
-                    className="w-10 h-10 rounded border border-gray-100"
-                    dangerouslySetInnerHTML={{ __html: cell.section_svg }}
-                  />
+                  <div className="relative group w-10 h-10">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(cell.section_svg)}`}
+                      alt="Section shape"
+                      className="w-10 h-10 rounded border border-gray-100 object-contain"
+                      draggable={false}
+                    />
+                    <label className="absolute inset-0 flex items-center justify-center rounded bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                      <Upload className="h-3 w-3 text-white" />
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, cell.cell_label, "section")} />
+                    </label>
+                  </div>
                 ) : (
                   <label className="flex items-center justify-center w-10 h-10 rounded border-2 border-dashed border-gray-200 cursor-pointer hover:border-indigo-300 transition-colors">
                     <Upload className="h-3 w-3 text-gray-300" />

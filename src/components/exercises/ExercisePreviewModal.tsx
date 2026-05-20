@@ -38,11 +38,12 @@ export function ExercisePreviewModal({ exercise, open, onClose }: ExercisePrevie
   // Clear state whenever the modal is opened or a different exercise is shown
   useEffect(() => {
     if (open) {
-      setPreviewAnswer("");
+      // Use "{}" as initial value for differences (JSON-serialised selections map)
+      setPreviewAnswer(exercise?.question.type === "differences" ? "{}" : "");
       setDifferencesTracking(null);
       setPrioritySortTracking(null);
     }
-  }, [open, exercise?.id]);
+  }, [open, exercise?.id, exercise?.question.type]);
 
   if (!exercise) return null;
 
@@ -73,6 +74,7 @@ export function ExercisePreviewModal({ exercise, open, onClose }: ExercisePrevie
             <DifferencesExercise
               instructions={q.text}
               images={q.differenceImages}
+              differenceObjects={q.differenceObjects ?? []}
               value={previewAnswer}
               onChange={setPreviewAnswer}
               onTrackingUpdate={setDifferencesTracking}

@@ -1,4 +1,4 @@
-import { Exercise, Question, Exam, ExamTemplate, ShapeCopyConfig, AnalyticalPerceptionConfig } from "@/types";
+import { Exercise, Question, Exam, ExamTemplate, ShapeCopyConfig, AnalyticalPerceptionConfig, DifferenceObject } from "@/types";
 import { placeholderImages } from "@/lib/placeholder-images";
 import { MOCK_DESIGN_SVGS, MOCK_SECTION_SVGS } from "@/components/exercises/analytical/ShapeSVGs";
 
@@ -157,7 +157,49 @@ const apChallengeConfig: AnalyticalPerceptionConfig = {
 };
 
 // ---------------------------------------------------------------------------
-// Mock exercise library — DIFFERENCES type only
+// Difference objects for mock exercises
+// (All preset options shown; correctAnswers derived from expectedAnswerNotes)
+// ---------------------------------------------------------------------------
+
+// All preset change types (matches PRESET_CHANGE_TYPES in the builder)
+const ALL_OPTIONS = [
+  "Color", "Size", "Shape", "Location", "Rotation",
+  "Number", "Texture", "Pattern", "Added", "Removed",
+];
+
+// City vs Nature — 6 objects: some changed, some unchanged (sun is same)
+const diffCityNatureObjects: DifferenceObject[] = [
+  { id: "sun",    name: "Sun",    changeOptions: ALL_OPTIONS, correctAnswers: ["Location"]  },
+  { id: "cloud",  name: "Cloud",  changeOptions: ALL_OPTIONS, correctAnswers: ["Removed"]   },
+  { id: "door",   name: "Door",   changeOptions: ALL_OPTIONS, correctAnswers: ["Color"]     },
+  { id: "tree",   name: "Tree",   changeOptions: ALL_OPTIONS, correctAnswers: ["Removed"]   },
+  { id: "flower", name: "Flower", changeOptions: ALL_OPTIONS, correctAnswers: ["Color"]     },
+  { id: "birds",  name: "Birds",  changeOptions: ALL_OPTIONS, correctAnswers: ["Added"]     },
+];
+
+// Kitchen Scene — 5 changed objects + 1 unchanged (stove stays the same)
+const diffKitchenObjects: DifferenceObject[] = [
+  { id: "curtains", name: "Curtains", changeOptions: ALL_OPTIONS, correctAnswers: ["Added"]          },
+  { id: "fridge",   name: "Fridge",   changeOptions: ALL_OPTIONS, correctAnswers: ["Color"]          },
+  { id: "cups",     name: "Cups",     changeOptions: ALL_OPTIONS, correctAnswers: ["Number"]         },
+  { id: "pear",     name: "Pear",     changeOptions: ALL_OPTIONS, correctAnswers: ["Removed"]        },
+  { id: "clock",    name: "Clock",    changeOptions: ALL_OPTIONS, correctAnswers: ["Added"]          },
+  { id: "stove",    name: "Stove",    changeOptions: ALL_OPTIONS, correctAnswers: []                 },
+];
+
+// Classroom Setup — 6 changed objects + 1 unchanged (teacher's chair stays the same)
+const diffClassroomObjects: DifferenceObject[] = [
+  { id: "chalkboard", name: "Chalkboard",    changeOptions: ALL_OPTIONS, correctAnswers: ["Color"]         },
+  { id: "desks",      name: "Desks",         changeOptions: ALL_OPTIONS, correctAnswers: ["Number"]        },
+  { id: "clock",      name: "Clock",         changeOptions: ALL_OPTIONS, correctAnswers: ["Removed"]       },
+  { id: "apple",      name: "Apple",         changeOptions: ALL_OPTIONS, correctAnswers: ["Added"]         },
+  { id: "bookshelf",  name: "Bookshelf",     changeOptions: ALL_OPTIONS, correctAnswers: ["Size"]          },
+  { id: "window",     name: "Window",        changeOptions: ALL_OPTIONS, correctAnswers: ["Added"]         },
+  { id: "chair",      name: "Teacher Chair", changeOptions: ALL_OPTIONS, correctAnswers: []                },
+];
+
+// ---------------------------------------------------------------------------
+// Mock exercise library
 // ---------------------------------------------------------------------------
 const mockExercises: Exercise[] = [
   {
@@ -180,6 +222,7 @@ const mockExercises: Exercise[] = [
         image1Url: placeholderImages.garden2A,
         image2Url: placeholderImages.garden2B,
       },
+      differenceObjects: diffCityNatureObjects,
       expectedAnswerNotes:
         "6 differences: sun position, cloud removed, door colour red→blue, tree removed, flower colour orange→purple, birds added.",
     },
@@ -264,6 +307,7 @@ const mockExercises: Exercise[] = [
         image1Url: placeholderImages.kitchen3A,
         image2Url: placeholderImages.kitchen3B,
       },
+      differenceObjects: diffKitchenObjects,
       expectedAnswerNotes:
         "5 differences: curtains added to window, fridge colour white→beige, 3 cups reduced to 2, green pear removed, wall clock added.",
     },
@@ -288,6 +332,7 @@ const mockExercises: Exercise[] = [
         image1Url: placeholderImages.classroom4A,
         image2Url: placeholderImages.classroom4B,
       },
+      differenceObjects: diffClassroomObjects,
       expectedAnswerNotes:
         "6 differences: chalkboard colour green→dark, 3 desks→2 desks, clock removed, apple added on teacher's desk, bookshelf has fewer books, extra small window added.",
     },

@@ -295,9 +295,8 @@ export default function TakeExamPage() {
         answerChanged: m.answerChanged,
         skipped: m.skipped && m.answerValue === undefined,
         revisited: m.revisited,
-        charactersTyped: diffTracking?.characters_typed,
-        editsCount: diffTracking?.edits_count,
-        timeToFirstKeystroke: diffTracking?.time_to_first_keystroke,
+        // Differences tracking no longer uses text-based fields;
+        // objects_classified, score, etc. travel in metadata below.
         ...(diffTracking || priorityTracking
           ? {
               metadata: {
@@ -566,7 +565,8 @@ export default function TakeExamPage() {
                   <DifferencesExercise
                     instructions={currentExercise.text}
                     images={currentExercise.differenceImages}
-                    value={(currentAnswerValue as string) || ""}
+                    differenceObjects={currentExercise.differenceObjects ?? []}
+                    value={(currentAnswerValue as string) || "{}"}
                     onChange={(val) => {
                       setValue(`answers.${currentExercise.id}`, val);
                       handleAnswerChange(currentExercise.id, currentIndex, val);

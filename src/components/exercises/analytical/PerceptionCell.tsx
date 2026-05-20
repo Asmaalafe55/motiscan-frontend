@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 interface PerceptionCellProps {
   cellLabel: string;          // e.g. "A1"
@@ -12,6 +12,11 @@ interface PerceptionCellProps {
 }
 
 const ANSWER_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+/** Convert a raw SVG string to a data URI suitable for an <img> src. */
+function svgToDataUri(svg: string): string {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
 
 export function PerceptionCellComponent({
   cellLabel,
@@ -38,18 +43,33 @@ export function PerceptionCellComponent({
   return (
     <div className="flex flex-col rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       {/* Cell label */}
-      <div className="flex items-center justify-between px-2 pt-1.5 pb-0">
+      <div className="flex items-center px-2 pt-1.5 pb-0">
         <span className="text-[10px] font-semibold text-gray-400 tracking-wider uppercase">
           {cellLabel}
         </span>
       </div>
 
-      {/* Complex design */}
+      {/* Complex design — rendered as <img> so the SVG is always contained.
+          dangerouslySetInnerHTML with a viewBox-only SVG produces an element
+          with no intrinsic height that overflows its parent. */}
       <div
-        className="flex-1 flex items-center justify-center p-2 bg-white"
-        style={{ minHeight: 130 }}
-        dangerouslySetInnerHTML={{ __html: designSvg }}
-      />
+        className="flex items-center justify-center p-2 bg-white overflow-hidden"
+        style={{ height: 140 }}
+      >
+        {designSvg ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={svgToDataUri(designSvg)}
+            alt={`Design ${cellLabel}`}
+            className="w-full h-full object-contain"
+            draggable={false}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center rounded border border-dashed border-gray-200 bg-gray-50 text-[11px] text-gray-300">
+            No design
+          </div>
+        )}
+      </div>
 
       {/* Bottom row: dropdown + section shape */}
       <div className="flex items-center gap-2 border-t border-gray-100 px-2 py-2 bg-gray-50">
@@ -69,12 +89,21 @@ export function PerceptionCellComponent({
           ))}
         </select>
 
-        {/* Section shape */}
+        {/* Section shape — also as <img> to guarantee containment */}
         <div
-          className="flex-shrink-0 w-10 h-10"
+          className="flex-shrink-0 w-10 h-10 overflow-hidden"
           title="Section shape"
-          dangerouslySetInnerHTML={{ __html: sectionSvg }}
-        />
+        >
+          {sectionSvg ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={svgToDataUri(sectionSvg)}
+              alt="Section shape"
+              className="w-full h-full object-contain"
+              draggable={false}
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );
