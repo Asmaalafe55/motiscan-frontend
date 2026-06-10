@@ -23,11 +23,37 @@ export const studentService = {
     return mockStudents.filter((s) => ids.includes(s.id));
   },
 
-  updateStudent: async (studentId: string, updates: Partial<Omit<User, "id" | "email" | "role" | "password">>): Promise<User | null> => {
+  createStudent: async (
+    data: Pick<User, "email" | "name"> & Partial<Pick<User, "phone" | "grade" | "avatarUrl">>
+  ): Promise<User> => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const existing = mockStudents.find((s) => s.email === data.email);
+    if (existing) throw new Error("Email already exists");
+    const newStudent: User = {
+      id: `student-${Date.now()}`,
+      role: "student",
+      ...data,
+    };
+    mockStudents.push(newStudent);
+    return newStudent;
+  },
+
+  updateStudent: async (
+    studentId: string,
+    updates: Partial<Omit<User, "id" | "email" | "role" | "password">>
+  ): Promise<User | null> => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     const idx = mockStudents.findIndex((s) => s.id === studentId);
     if (idx === -1) return null;
     mockStudents[idx] = { ...mockStudents[idx], ...updates };
     return mockStudents[idx];
+  },
+
+  deleteStudent: async (studentId: string): Promise<boolean> => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const idx = mockStudents.findIndex((s) => s.id === studentId);
+    if (idx === -1) return false;
+    mockStudents.splice(idx, 1);
+    return true;
   },
 };
