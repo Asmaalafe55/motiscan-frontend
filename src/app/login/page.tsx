@@ -148,6 +148,16 @@ export default function LoginPage() {
               {isLoading ? "Logging in..." : "Login"}
             </Button>
 
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => router.push("/forgot-password")}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Forgot your password?
+              </button>
+            </div>
+
             <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800 space-y-1">
               <p className="font-semibold mb-1">Demo Credentials:</p>
               <p><span className="font-medium">Teacher:</span> noor@test.com / teacher123</p>
