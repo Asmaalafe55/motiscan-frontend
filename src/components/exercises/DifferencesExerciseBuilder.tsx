@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import type { Exercise, DifferencesTracking, DifferenceObject } from "@/types";
 import { cn } from "@/lib/utils";
+import { uploadImages } from "@/lib/uploadImage";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -83,18 +84,6 @@ interface DifferencesExerciseBuilderProps {
   onCancel?: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Image upload helper
-// ---------------------------------------------------------------------------
-
-function readFileAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Small sub-component: section divider with label
@@ -182,9 +171,13 @@ export function DifferencesExerciseBuilder({
       return;
     }
     setImageError(null);
-    const dataUrl = await readFileAsDataURL(file);
-    if (slot === 1) setImage1(dataUrl);
-    else setImage2(dataUrl);
+    try {
+      const [url] = await uploadImages([file]);
+      if (slot === 1) setImage1(url);
+      else setImage2(url);
+    } catch {
+      setImageError("Upload failed — make sure the backend is running.");
+    }
   };
 
   // ---------------------------------------------------------------------------
