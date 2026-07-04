@@ -1,28 +1,15 @@
 import { LiveSession } from "@/types";
+import { getSocket } from "@/lib/socket";
 
-// Mock live session state (in real app, this would be WebSocket/Redis)
-// Only examA (Motivation Assessment — Group A) is live.
-// Sara is connected; Ahmed has disconnected but started.
-const liveSessions: Map<string, LiveSession> = new Map([
-  [
-    "examA",
-    {
-      examId: "examA",
-      connectedStudents: ["sara"],
-      startedAt: new Date(Date.now() - 50 * 60 * 1000).toISOString(), // 50 min ago
-    },
-  ],
-]);
+const liveSessions: Map<string, LiveSession> = new Map();
 
 export const liveSessionService = {
   getLiveSession: async (examId: string): Promise<LiveSession | null> => {
-    await new Promise((r) => setTimeout(r, 200));
     return liveSessions.get(examId) ?? null;
   },
 
   startLiveSession: async (examId: string): Promise<LiveSession> => {
-    await new Promise((r) => setTimeout(r, 300));
-    const session: LiveSession = {
+    const session: LiveSession = liveSessions.get(examId) ?? {
       examId,
       connectedStudents: [],
       startedAt: new Date().toISOString(),
@@ -32,12 +19,26 @@ export const liveSessionService = {
   },
 
   endLiveSession: async (examId: string): Promise<void> => {
-    await new Promise((r) => setTimeout(r, 200));
     liveSessions.delete(examId);
   },
 
+  openTeacherSession: (examId: string): void => {
+    getSocket().emit("teacher:openSession", { examId });
+  },
+
+  closeTeacherSession: (examId: string): void => {
+    getSocket().emit("teacher:closeSession", { examId });
+  },
+
+  joinSession: (examId: string, studentId: string, studentName: string): void => {
+    getSocket().emit("student:join", { examId, studentId, studentName });
+  },
+
+  notifyExerciseChange: (exerciseIndex: number): void => {
+    getSocket().emit("student:exerciseChange", { exerciseIndex });
+  },
+
   addStudentToSession: async (examId: string, studentId: string): Promise<LiveSession | null> => {
-    await new Promise((r) => setTimeout(r, 200));
     const session = liveSessions.get(examId);
     if (!session) return null;
     if (!session.connectedStudents.includes(studentId)) {
@@ -50,7 +51,6 @@ export const liveSessionService = {
     examId: string,
     studentId: string
   ): Promise<LiveSession | null> => {
-    await new Promise((r) => setTimeout(r, 200));
     const session = liveSessions.get(examId);
     if (!session) return null;
     session.connectedStudents = session.connectedStudents.filter((id) => id !== studentId);
@@ -58,7 +58,16 @@ export const liveSessionService = {
   },
 
   getConnectedStudents: async (examId: string): Promise<string[]> => {
-    await new Promise((r) => setTimeout(r, 200));
     return liveSessions.get(examId)?.connectedStudents ?? [];
+  },
+
+  /** Called by LiveSessionContext when socket events arrive */
+  setConnectedStudents: (examId: string, studentIds: string[]): void => {
+    const existing = liveSessions.get(examId);
+    liveSessions.set(examId, {
+      examId,
+      connectedStudents: studentIds,
+      startedAt: existing?.startedAt ?? new Date().toISOString(),
+    });
   },
 };

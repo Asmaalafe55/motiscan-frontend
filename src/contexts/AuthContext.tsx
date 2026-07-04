@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User, UserRole } from "@/types";
 import { authService } from "@/services/auth.service";
+import { getToken } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -18,16 +19,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored user session
-    const storedUserId = localStorage.getItem("userId");
-    if (storedUserId) {
-      authService.getCurrentUser(storedUserId).then((userData) => {
-        setUser(userData);
+    const restore = async () => {
+      if (!getToken()) {
         setIsLoading(false);
-      });
-    } else {
+        return;
+      }
+      const userData = await authService.getCurrentUser();
+      setUser(userData);
       setIsLoading(false);
-    }
+    };
+    restore();
   }, []);
 
   const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
@@ -36,13 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = await authService.login(email, password, role);
       if (userData) {
         setUser(userData);
-        localStorage.setItem("userId", userData.id);
         setIsLoading(false);
         return true;
       }
       setIsLoading(false);
       return false;
-    } catch (error) {
+    } catch {
       setIsLoading(false);
       return false;
     }
@@ -52,7 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     await authService.logout();
     setUser(null);
-    localStorage.removeItem("userId");
     setIsLoading(false);
   };
 
