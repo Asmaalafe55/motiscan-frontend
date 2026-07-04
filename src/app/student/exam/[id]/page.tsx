@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Layout } from "@/components/Layout";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { examService } from "@/services/exam.service";
 import { liveSessionService } from "@/services/liveSession.service";
+import { submissionService } from "@/services/submission.service";
 import { trackingService } from "@/services/tracking.service";
 import {
   Exam,
@@ -79,6 +80,25 @@ export default function TakeExamPage() {
   const [analyticalPerceptionTracking, setAnalyticalPerceptionTracking] = useState<
     Record<string, AnalyticalPerceptionTracking>
   >({});
+  const submissionIdRef = useRef<string | null>(null);
+
+  const saveTracking = async (
+    eventType: string,
+    exerciseId: string,
+    payload: Record<string, unknown> = {}
+  ) => {
+    if (!submissionIdRef.current) return;
+    try {
+      await submissionService.saveEvent(
+        submissionIdRef.current,
+        eventType,
+        payload,
+        exerciseId
+      );
+    } catch (err) {
+      console.error("Failed to save tracking event:", err);
+    }
+  };
 
   const { register, handleSubmit, watch, setValue } = useForm<AnswersForm>({
     defaultValues: { answers: {} },
@@ -109,6 +129,15 @@ export default function TakeExamPage() {
           liveSessionService.joinSession(examId, user.id, user.name);
           await liveSessionService.addStudentToSession(examId, user.id);
           await trackingService.startStudentSession(examId, user.id, data.questions.length, started);
+          try {
+            const submission = await submissionService.startSubmission(
+              examId,
+              data.questions.length
+            );
+            submissionIdRef.current = submission.id;
+          } catch (err) {
+            console.error("Failed to start submission:", err);
+          }
         }
 
         const FIVE_HOURS = 5 * 60 * 60 * 1000;
@@ -181,6 +210,7 @@ export default function TakeExamPage() {
       exerciseId: exercise.id,
       action: "enter",
     });
+    await saveTracking("exercise_enter", exercise.id, { exerciseIndex: index });
   };
 
   const handleLeaveExercise = async (index: number) => {
@@ -213,6 +243,10 @@ export default function TakeExamPage() {
       exerciseId: exercise.id,
       action: "leave",
     });
+    await saveTracking("exercise_leave", exercise.id, {
+      exerciseIndex: index,
+      durationOnExercise: ensureMetrics(exercise.id).durationOnExercise,
+    });
   };
 
   const handleAnswerChange = async (exerciseId: string, index: number, value: string | number) => {
@@ -242,6 +276,7 @@ export default function TakeExamPage() {
       exerciseId,
       action: "answer",
     });
+    await saveTracking("answer_change", exerciseId, { exerciseIndex: index, value });
   };
 
   const goToExercise = async (nextIndex: number) => {
@@ -324,6 +359,16 @@ export default function TakeExamPage() {
       const attempts = buildAttempts();
       await trackingService.recordExerciseAttempts(attempts);
       await trackingService.markSubmitted(examId, user.id);
+
+      if (submissionIdRef.current) {
+        await submissionService.saveEvent(submissionIdRef.current, "submit", {
+          answers,
+          timeSpent,
+          attempts,
+        });
+        await submissionService.finalize(submissionIdRef.current);
+        submissionIdRef.current = null;
+      }
 
       await examService.submitExam(examId, user.id, answers, timeSpent);
       await liveSessionService.removeStudentFromSession(examId, user.id);
