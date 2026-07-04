@@ -5,6 +5,7 @@ import type { StudentExamSession, User } from "@/types";
 import { liveSessionService } from "@/services/liveSession.service";
 import { trackingService } from "@/services/tracking.service";
 import { studentService } from "@/services/student.service";
+import { getSocket } from "@/lib/socket";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,12 +75,38 @@ export function useExamSession(
     setData({ connectedStudentIds, sessions, studentNames: userMap, isRefreshing: false });
   }, [examId, isLive]);
 
+  // Poll on a timer
   useEffect(() => {
     refresh();
     if (!isLive) return;
     const interval = setInterval(refresh, intervalMs);
     return () => clearInterval(interval);
   }, [isLive, refresh, intervalMs]);
+
+  // Real-time socket events — re-fetch immediately so the UI reacts
+  // without waiting for the next poll cycle
+  useEffect(() => {
+    if (!isLive) return;
+
+    const socket = getSocket();
+
+    const onProgress = () => refresh();
+    const onSubmitted = () => refresh();
+    const onJoined = () => refresh();
+    const onLeft = () => refresh();
+
+    socket.on("session:studentProgress",  onProgress);
+    socket.on("session:studentSubmitted", onSubmitted);
+    socket.on("session:studentJoined",    onJoined);
+    socket.on("session:studentLeft",      onLeft);
+
+    return () => {
+      socket.off("session:studentProgress",  onProgress);
+      socket.off("session:studentSubmitted", onSubmitted);
+      socket.off("session:studentJoined",    onJoined);
+      socket.off("session:studentLeft",      onLeft);
+    };
+  }, [isLive, refresh]);
 
   return { ...data, refresh };
 }

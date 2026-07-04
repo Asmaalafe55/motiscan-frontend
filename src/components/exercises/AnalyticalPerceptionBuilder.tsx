@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { AnalyticalPerceptionExercise } from "./AnalyticalPerceptionExercise";
 import { Eye, Loader2, Plus, Trash2, Upload } from "lucide-react";
+import { uploadImages } from "@/lib/uploadImage";
 import type {
   Exercise,
   AnalyticalPerceptionConfig,
@@ -50,18 +51,9 @@ function getCellLabels(size: PerceptionGridSize): string[] {
 // Image upload helper
 // ---------------------------------------------------------------------------
 
-function readFileAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-// Wrap a data URL image in an SVG for uniform rendering
-function imageToSvgString(dataUrl: string, w = 120, h = 120): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"><image href="${dataUrl}" width="${w}" height="${h}"/></svg>`;
+// Wrap an image URL in an SVG for uniform rendering in the perception grid
+function imageToSvgString(imageUrl: string, w = 120, h = 120): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"><image href="${imageUrl}" width="${w}" height="${h}"/></svg>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -157,9 +149,14 @@ export function AnalyticalPerceptionBuilder({
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const dataUrl = await readFileAsDataURL(file);
-    const svgStr = imageToSvgString(dataUrl, slot === "design" ? 120 : 40, slot === "design" ? 120 : 40);
-    updateCell(cellLabel, slot === "design" ? { design_svg: svgStr } : { section_svg: svgStr });
+    try {
+      const [url] = await uploadImages([file]);
+      const size = slot === "design" ? 120 : 40;
+      const svgStr = imageToSvgString(url, size, size);
+      updateCell(cellLabel, slot === "design" ? { design_svg: svgStr } : { section_svg: svgStr });
+    } catch {
+      setErrors((prev) => [...prev, `Upload failed for cell ${cellLabel} — make sure the backend is running.`]);
+    }
   };
 
   // ---------------------------------------------------------------------------

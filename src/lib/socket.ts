@@ -9,7 +9,9 @@ export function getSocket(): Socket {
   if (!socket) {
     socket = io(SOCKET_URL, {
       autoConnect: false,
-      transports: ["websocket", "polling"],
+      // Start with polling (always works), then upgrade to websocket.
+      // Reversing this order causes "websocket error" when the upgrade fails.
+      transports: ["polling", "websocket"],
     });
   }
   return socket;
