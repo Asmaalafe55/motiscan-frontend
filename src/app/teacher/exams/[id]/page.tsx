@@ -16,6 +16,7 @@ import { exerciseLibraryService } from "@/services/exerciseLibrary.service";
 import type { Exam, Exercise, ExamSubmission, User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useLiveSession } from "@/contexts/LiveSessionContext";
+import { getSocket } from "@/lib/socket";
 import {
   BookOpen,
   Clock,
@@ -123,6 +124,15 @@ export default function ExamDetailPage() {
   // Refresh live context when session changes
   useEffect(() => {
     if (exam?.isLive) refreshSession(examId);
+  }, [exam?.isLive, examId, refreshSession]);
+
+  // Re-join socket room when page loads with an already-live exam
+  useEffect(() => {
+    if (exam?.isLive) {
+      getSocket().emit("teacher:openSession", { examId });
+      liveSessionService.startLiveSession(examId);
+      refreshSession(examId);
+    }
   }, [exam?.isLive, examId, refreshSession]);
 
   const handleOpenSession = async () => {

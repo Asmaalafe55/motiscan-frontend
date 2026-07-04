@@ -1,9 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { LiveSession } from "@/types";
 import { liveSessionService } from "@/services/liveSession.service";
-import { connectSocket, disconnectSocket } from "@/lib/socket";
+import { connectSocket, disconnectSocket, getSocket } from "@/lib/socket";
 
 interface LiveSessionContextType {
   activeSessions: Map<string, LiveSession>;
@@ -17,6 +17,40 @@ const LiveSessionContext = createContext<LiveSessionContextType | undefined>(und
 export function LiveSessionProvider({ children }: { children: ReactNode }) {
   const [activeSessions, setActiveSessions] = useState<Map<string, LiveSession>>(new Map());
   const [isSocketConnected, setIsSocketConnected] = useState(false);
+  const activeExamIdRef = useRef<string | null>(null);
+
+  const syncSession = useCallback((examId: string) => {
+    const session = liveSessionService.getLiveSession(examId);
+    session.then((s) => {
+      if (s) {
+        setActiveSessions((prev) => {
+          const next = new Map(prev);
+          next.set(examId, s);
+          return next;
+        });
+      }
+    });
+  }, []);
+
+  const addConnectedStudent = useCallback((examId: string, studentId: string) => {
+    liveSessionService.startLiveSession(examId).then(() => {
+      liveSessionService.getLiveSession(examId).then((session) => {
+        const ids = session?.connectedStudents ?? [];
+        if (!ids.includes(studentId)) {
+          liveSessionService.setConnectedStudents(examId, [...ids, studentId]);
+          syncSession(examId);
+        }
+      });
+    });
+  }, [syncSession]);
+
+  const removeConnectedStudent = useCallback((examId: string, studentId: string) => {
+    liveSessionService.getLiveSession(examId).then((session) => {
+      const ids = (session?.connectedStudents ?? []).filter((id) => id !== studentId);
+      liveSessionService.setConnectedStudents(examId, ids);
+      syncSession(examId);
+    });
+  }, [syncSession]);
 
   useEffect(() => {
     const socket = connectSocket();
@@ -36,17 +70,59 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
       setIsSocketConnected(false);
     };
 
+    const onStudentJoined = (payload: { studentId: string; studentName?: string }) => {
+      const examId = activeExamIdRef.current;
+      if (examId && payload.studentId) {
+        console.log("[Socket] Student joined:", payload.studentName ?? payload.studentId);
+        addConnectedStudent(examId, payload.studentId);
+      }
+    };
+
+    const onStudentLeft = ({ studentId }: { studentId: string }) => {
+      const examId = activeExamIdRef.current;
+      if (examId && studentId) {
+        console.log("[Socket] Student left:", studentId);
+        removeConnectedStudent(examId, studentId);
+      }
+    };
+
+    const onSessionOpened = ({ examId }: { examId: string }) => {
+      console.log("[Socket] Session opened:", examId);
+      activeExamIdRef.current = examId;
+      liveSessionService.startLiveSession(examId);
+      syncSession(examId);
+    };
+
+    const onSessionClosed = ({ examId }: { examId: string }) => {
+      console.log("[Socket] Session closed:", examId);
+      if (activeExamIdRef.current === examId) activeExamIdRef.current = null;
+      liveSessionService.endLiveSession(examId);
+      setActiveSessions((prev) => {
+        const next = new Map(prev);
+        next.delete(examId);
+        return next;
+      });
+    };
+
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
+    socket.on("session:studentJoined", onStudentJoined);
+    socket.on("session:studentLeft", onStudentLeft);
+    socket.on("session:opened", onSessionOpened);
+    socket.on("session:closed", onSessionClosed);
 
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
+      socket.off("session:studentJoined", onStudentJoined);
+      socket.off("session:studentLeft", onStudentLeft);
+      socket.off("session:opened", onSessionOpened);
+      socket.off("session:closed", onSessionClosed);
       disconnectSocket();
     };
-  }, []);
+  }, [addConnectedStudent, removeConnectedStudent, syncSession]);
 
   const refreshSession = async (examId: string) => {
     const session = await liveSessionService.getLiveSession(examId);
@@ -77,3 +153,6 @@ export function useLiveSession() {
   }
   return context;
 }
+
+/** Re-export for pages that emit socket events */
+export { getSocket };

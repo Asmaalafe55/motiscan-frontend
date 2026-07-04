@@ -1,59 +1,52 @@
 import { User } from "@/types";
+import { api } from "@/lib/api";
 
-const mockStudents: User[] = [
-  { id: "sara",  email: "sara@test.com",  name: "Sara Cohen",   role: "student" },
-  { id: "ahmed", email: "ahmed@test.com", name: "Ahmed Khalil", role: "student" },
-  { id: "maya",  email: "maya@test.com",  name: "Maya Levi",    role: "student" },
-  { id: "omar",  email: "omar@test.com",  name: "Omar Hassan",  role: "student" },
-];
+interface StudentsResponse {
+  students: User[];
+}
 
 export const studentService = {
   getAllStudents: async (): Promise<User[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return [...mockStudents];
+    const data = await api.get<StudentsResponse>("/api/students?limit=100");
+    return data.students;
   },
 
   getStudentById: async (studentId: string): Promise<User | null> => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    return mockStudents.find((s) => s.id === studentId) || null;
+    try {
+      return await api.get<User>(`/api/students/${studentId}`);
+    } catch {
+      return null;
+    }
   },
 
   getStudentsByIds: async (ids: string[]): Promise<User[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    return mockStudents.filter((s) => ids.includes(s.id));
+    const results = await Promise.all(ids.map((id) => studentService.getStudentById(id)));
+    return results.filter((s): s is User => s !== null);
   },
 
   createStudent: async (
     data: Pick<User, "email" | "name"> & Partial<Pick<User, "phone" | "grade" | "avatarUrl">>
   ): Promise<User> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const existing = mockStudents.find((s) => s.email === data.email);
-    if (existing) throw new Error("Email already exists");
-    const newStudent: User = {
-      id: `student-${Date.now()}`,
-      role: "student",
-      ...data,
-    };
-    mockStudents.push(newStudent);
-    return newStudent;
+    return api.post<User>("/api/students", data);
   },
 
   updateStudent: async (
     studentId: string,
     updates: Partial<Omit<User, "id" | "email" | "role" | "password">>
   ): Promise<User | null> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const idx = mockStudents.findIndex((s) => s.id === studentId);
-    if (idx === -1) return null;
-    mockStudents[idx] = { ...mockStudents[idx], ...updates };
-    return mockStudents[idx];
+    try {
+      return await api.put<User>(`/api/students/${studentId}`, updates);
+    } catch {
+      return null;
+    }
   },
 
   deleteStudent: async (studentId: string): Promise<boolean> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const idx = mockStudents.findIndex((s) => s.id === studentId);
-    if (idx === -1) return false;
-    mockStudents.splice(idx, 1);
-    return true;
+    try {
+      await api.delete(`/api/students/${studentId}`);
+      return true;
+    } catch {
+      return false;
+    }
   },
 };

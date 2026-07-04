@@ -91,8 +91,8 @@ export default function TakeExamPage() {
   useEffect(() => {
     const fetchExam = async () => {
       try {
-        const data = await examService.getExamById(examId);
-        if (!data || !data.isLive) {
+        const data = await examService.getExamForStudent(examId);
+        if (!data) {
           toast({
             title: "Exam not available",
             description: "This exam is not currently live.",
@@ -106,6 +106,7 @@ export default function TakeExamPage() {
         setStartTime(started);
 
         if (user) {
+          liveSessionService.joinSession(examId, user.id, user.name);
           await liveSessionService.addStudentToSession(examId, user.id);
           await trackingService.startStudentSession(examId, user.id, data.questions.length, started);
         }
