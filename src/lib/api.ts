@@ -21,6 +21,14 @@ export function setToken(token: string | null): void {
   else localStorage.removeItem("token");
 }
 
+function handleUnauthorized(): void {
+  if (typeof window === "undefined") return;
+  setToken(null);
+  if (window.location.pathname !== "/login") {
+    window.location.href = "/login";
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -30,6 +38,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+
+  if (res.status === 401) {
+    handleUnauthorized();
+  }
 
   if (res.status === 204) return undefined as T;
 

@@ -21,17 +21,17 @@ export default function TeacherDashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [students, exams, reports] = await Promise.all([
+        const [students, exams, reportCount] = await Promise.all([
           studentService.getAllStudents(),
           examService.getAllExams(),
-          reportService.getAllReports(),
+          reportService.getGeneratedCount(),
         ]);
 
         setStats({
           totalStudents: students.length,
           totalExams: exams.length,
           activeExams: exams.filter((e) => e.isLive).length,
-          pendingReports: reports.length,
+          pendingReports: reportCount,
         });
       } catch (error) {
         console.error("Error fetching stats:", error);
