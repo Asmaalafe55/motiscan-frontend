@@ -214,6 +214,7 @@ export interface ExamSubmission {
   answers: Answer[];
   submittedAt: string;
   timeSpent: number; // in seconds
+  hasReport?: boolean; // set by the backend submissions-list endpoint
 }
 
 export interface Answer {

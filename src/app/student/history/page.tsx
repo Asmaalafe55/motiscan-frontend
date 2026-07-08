@@ -121,7 +121,7 @@ export default function StudentHistoryPage() {
     const fetchSubmissions = async () => {
       if (!user) return;
       try {
-        const submissionsData = await examService.getSubmissionsForStudent(user.id);
+        const submissionsData = await examService.getMySubmissions();
         const submissionsWithExams = await Promise.all(
           submissionsData.map(async (submission) => {
             const exam = await examService.getExamById(submission.examId);
