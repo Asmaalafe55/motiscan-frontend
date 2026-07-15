@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { examService } from "@/services/exam.service";
 import { studentService } from "@/services/student.service";
-import { examSessionService } from "@/services/examSessionService";
+import { reportService } from "@/services/report.service";
 import { Exam, ExamSubmission, User } from "@/types";
 import {
   BarChart3,
@@ -50,28 +50,40 @@ export default function TeacherReportsPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const students = await studentService.getAllStudents();
+        const [students, submissions] = await Promise.all([
+          studentService.getAllStudents(),
+          examService.getAllSubmissions(),
+        ]);
 
-        const rows: StudentWithSubmissions[] = await Promise.all(
-          students.map(async (student) => {
-            const subs = await examService.getSubmissionsForStudent(student.id);
-            const subsWithExam = (
-              await Promise.all(
-                subs.map(async (sub) => {
-                  const exam = await examService.getExamById(sub.examId);
-                  return exam ? { ...sub, exam } : null;
-                })
-              )
-            ).filter((s): s is ExamSubmission & { exam: Exam } => s !== null);
+        const studentById = new Map(students.map((s) => [s.id, s]));
 
-            return { student, submissions: subsWithExam };
-          })
-        );
+        // Fetch each referenced exam once.
+        const examCache = new Map<string, Exam | null>();
+        const getExam = async (examId: string): Promise<Exam | null> => {
+          if (!examCache.has(examId)) {
+            examCache.set(examId, await examService.getExamById(examId));
+          }
+          return examCache.get(examId) ?? null;
+        };
 
-        // Only include students who have at least one submission
-        setData(rows.filter((r) => r.submissions.length > 0));
-        // Auto-expand all by default
-        setExpanded(new Set(rows.filter((r) => r.submissions.length > 0).map((r) => r.student.id)));
+        // Group submissions by student, attaching the exam to each.
+        const byStudent = new Map<string, (ExamSubmission & { exam: Exam })[]>();
+        for (const sub of submissions) {
+          const exam = await getExam(sub.examId);
+          if (!exam) continue;
+          const list = byStudent.get(sub.studentId) ?? [];
+          list.push({ ...sub, exam });
+          byStudent.set(sub.studentId, list);
+        }
+
+        const rows: StudentWithSubmissions[] = [];
+        for (const [studentId, subs] of byStudent) {
+          const student = studentById.get(studentId);
+          if (student) rows.push({ student, submissions: subs });
+        }
+
+        setData(rows);
+        setExpanded(new Set(rows.map((r) => r.student.id)));
       } catch (err) {
         console.error("Error loading reports:", err);
       } finally {
@@ -94,18 +106,24 @@ export default function TeacherReportsPage() {
     });
   };
 
-  const handleGenerateReport = async (studentId: string, examId: string) => {
+  const handleGenerateReport = async (
+    submissionId: string,
+    studentId: string,
+    examId: string
+  ) => {
     const key = `${studentId}:${examId}`;
     setGenerating((prev) => new Set(prev).add(key));
-    // Mock 2-second AI processing delay
-    await new Promise((r) => setTimeout(r, 2000));
-    examSessionService.markReportGenerated(studentId, examId);
-    setGenerating((prev) => {
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-    router.push(`/teacher/reports/${studentId}/${examId}`);
+    try {
+      await reportService.generateReport(submissionId);
+      router.push(`/teacher/reports/${studentId}/${examId}`);
+    } catch (err) {
+      console.error("Failed to generate report:", err);
+      setGenerating((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
   };
 
   const handleViewReport = (studentId: string, examId: string) => {
@@ -192,7 +210,7 @@ export default function TeacherReportsPage() {
                         {submissions.map((sub) => {
                           const key = `${student.id}:${sub.examId}`;
                           const isGenerating = generating.has(key);
-                          const hasReport = examSessionService.hasReport(student.id, sub.examId);
+                          const hasReport = sub.hasReport === true;
 
                           return (
                             <div
@@ -225,7 +243,7 @@ export default function TeacherReportsPage() {
                                     variant="gradient"
                                     className="h-8 text-xs gap-1.5"
                                     disabled={isGenerating}
-                                    onClick={() => handleGenerateReport(student.id, sub.examId)}
+                                    onClick={() => handleGenerateReport(sub.id, student.id, sub.examId)}
                                   >
                                     {isGenerating ? (
                                       <>

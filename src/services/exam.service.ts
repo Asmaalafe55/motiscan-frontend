@@ -18,6 +18,10 @@ interface ExamDetailResponse {
   assignedStudentIds?: string[];
 }
 
+interface SubmissionsResponse {
+  submissions: ExamSubmission[];
+}
+
 async function loadFullExam(
   exam: ApiExam,
   exerciseLinks: ApiExamExercise[],
@@ -150,7 +154,8 @@ export const examService = {
     timeSpent: number
   ): Promise<ExamSubmission> => {
     getSocket().emit("student:submit");
-    // Submissions API not yet available — return local record
+    // The submission is persisted/finalized via submissionService inside the
+    // exam page; this local record is only used for the immediate UI response.
     return {
       id: `sub-${Date.now()}`,
       examId,
@@ -161,9 +166,38 @@ export const examService = {
     };
   },
 
-  getSubmissionsForStudent: async (_studentId: string): Promise<ExamSubmission[]> => [],
+  // Teacher: all of a single student's submitted exams (across this teacher's exams).
+  getSubmissionsForStudent: async (studentId: string): Promise<ExamSubmission[]> => {
+    const data = await api.get<SubmissionsResponse>(
+      `/api/submissions?studentId=${encodeURIComponent(studentId)}`
+    );
+    return data.submissions;
+  },
 
-  getSubmissionsForExam: async (_examId: string): Promise<ExamSubmission[]> => [],
+  // Teacher: all submissions for a single exam.
+  getSubmissionsForExam: async (examId: string): Promise<ExamSubmission[]> => {
+    const data = await api.get<SubmissionsResponse>(
+      `/api/submissions?examId=${encodeURIComponent(examId)}`
+    );
+    return data.submissions;
+  },
 
-  hasStudentSubmitted: async (_examId: string, _studentId: string): Promise<boolean> => false,
+  // Teacher: every submitted submission across all of this teacher's exams.
+  getAllSubmissions: async (): Promise<ExamSubmission[]> => {
+    const data = await api.get<SubmissionsResponse>("/api/submissions");
+    return data.submissions;
+  },
+
+  // Student: the logged-in student's own submitted exams.
+  getMySubmissions: async (): Promise<ExamSubmission[]> => {
+    const data = await api.get<SubmissionsResponse>("/api/submissions/mine");
+    return data.submissions;
+  },
+
+  hasStudentSubmitted: async (examId: string, studentId: string): Promise<boolean> => {
+    const data = await api.get<SubmissionsResponse>(
+      `/api/submissions?examId=${encodeURIComponent(examId)}&studentId=${encodeURIComponent(studentId)}`
+    );
+    return data.submissions.length > 0;
+  },
 };
