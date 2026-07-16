@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DifferenceImages, DifferencesTracking, DifferenceObject } from "@/types";
 import { Button } from "@/components/ui/button";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 
 interface DifferencesExerciseProps {
@@ -190,7 +191,7 @@ export function DifferencesExercise({
             </span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={url}
+              src={resolveMediaUrl(url)}
               alt={label}
               className="w-full rounded-lg border-2 border-border object-contain bg-muted"
               style={{ aspectRatio: "4/3", maxHeight: 280 }}

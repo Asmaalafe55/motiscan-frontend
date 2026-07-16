@@ -1,4 +1,5 @@
 import type { Exam, Exercise, Question } from "@/types";
+import { resolveDifferenceImages, resolveMediaUrl } from "@/lib/mediaUrl";
 
 export interface ApiExam {
   id: string;
@@ -29,7 +30,34 @@ export function mapApiExercise(row: {
   question?: Partial<Question>;
   createdAt: string;
 }): Exercise {
-  const question = row.question ?? {};
+  const raw = row.question ?? {};
+  const question: Partial<Question> = { ...raw };
+
+  if (raw.differenceImages) {
+    question.differenceImages = resolveDifferenceImages(raw.differenceImages);
+  }
+
+  if (raw.shapeCopyConfig?.rows) {
+    question.shapeCopyConfig = {
+      ...raw.shapeCopyConfig,
+      rows: raw.shapeCopyConfig.rows.map((row) => ({
+        ...row,
+        model_snapshot: resolveMediaUrl(row.model_snapshot),
+      })),
+    };
+  }
+
+  if (raw.analyticalPerceptionConfig?.cells) {
+    question.analyticalPerceptionConfig = {
+      ...raw.analyticalPerceptionConfig,
+      cells: raw.analyticalPerceptionConfig.cells.map((cell) => ({
+        ...cell,
+        design_svg: resolveMediaUrl(cell.design_svg),
+        section_svg: resolveMediaUrl(cell.section_svg),
+      })),
+    };
+  }
+
   return {
     id: row.id,
     title: row.title,

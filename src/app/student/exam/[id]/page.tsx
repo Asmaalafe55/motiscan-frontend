@@ -283,6 +283,7 @@ export default function TakeExamPage() {
     if (!exam) return;
     await handleLeaveExercise(currentIndex);
     setCurrentIndex(nextIndex);
+    liveSessionService.notifyExerciseChange(nextIndex);
     await handleEnterExercise(nextIndex);
   };
 

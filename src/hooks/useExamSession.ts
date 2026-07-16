@@ -2,111 +2,147 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { StudentExamSession, User } from "@/types";
-import { liveSessionService } from "@/services/liveSession.service";
-import { trackingService } from "@/services/tracking.service";
+import { examService } from "@/services/exam.service";
 import { studentService } from "@/services/student.service";
-import { getSocket } from "@/lib/socket";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import { connectSocket, getSocket } from "@/lib/socket";
 
 export interface ExamSessionData {
-  /** Student IDs currently connected (browsers open) */
   connectedStudentIds: string[];
-  /** All students who have ever joined this session (incl. away/submitted) */
   sessions: StudentExamSession[];
-  /** Maps studentId → display name */
   studentNames: Record<string, User>;
   isRefreshing: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
+interface SocketStudentPayload {
+  examId?: string;
+  studentId: string;
+  studentName?: string;
+}
 
-/**
- * Polls the live session and tracking service for a given exam.
- * Replaces ad-hoc polling in individual pages with a single reusable hook.
- * When the backend is ready, only the service functions need to change.
- *
- * @param examId   The exam to monitor.
- * @param isLive   Only polls while the exam is live; clears data when closed.
- * @param intervalMs  Poll interval in milliseconds (default 10s).
- */
 export function useExamSession(
   examId: string,
   isLive: boolean,
   intervalMs = 10_000
 ): ExamSessionData & { refresh: () => void } {
-  const [data, setData] = useState<ExamSessionData>({
-    connectedStudentIds: [],
-    sessions: [],
-    studentNames: {},
-    isRefreshing: false,
-  });
+  const [connectedStudentIds, setConnectedStudentIds] = useState<string[]>([]);
+  const [sessions, setSessions] = useState<StudentExamSession[]>([]);
+  const [studentNames, setStudentNames] = useState<Record<string, User>>({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
+    if (!isLive) return;
+
+    setIsRefreshing(true);
+    try {
+      const apiSessions = await examService.getExamSessions(examId);
+      setSessions(apiSessions);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [examId, isLive]);
+
+  useEffect(() => {
     if (!isLive) {
-      setData({ connectedStudentIds: [], sessions: [], studentNames: {}, isRefreshing: false });
+      setConnectedStudentIds([]);
+      setSessions([]);
+      setStudentNames({});
       return;
     }
 
-    setData((prev) => ({ ...prev, isRefreshing: true }));
-
-    const [connectedStudentIds, sessions] = await Promise.all([
-      liveSessionService.getConnectedStudents(examId),
-      trackingService.getStudentSessionsForExam(examId),
-    ]);
-
-    // Resolve names for everyone who has a session (connected OR historical)
-    const allIds = Array.from(
-      new Set([...connectedStudentIds, ...sessions.map((s) => s.studentId)])
-    );
-
-    const userMap: Record<string, User> = {};
-    await Promise.all(
-      allIds.map(async (id) => {
-        const u = await studentService.getStudentById(id);
-        if (u) userMap[id] = u;
-      })
-    );
-
-    setData({ connectedStudentIds, sessions, studentNames: userMap, isRefreshing: false });
-  }, [examId, isLive]);
-
-  // Poll on a timer
-  useEffect(() => {
     refresh();
-    if (!isLive) return;
     const interval = setInterval(refresh, intervalMs);
     return () => clearInterval(interval);
   }, [isLive, refresh, intervalMs]);
 
-  // Real-time socket events — re-fetch immediately so the UI reacts
-  // without waiting for the next poll cycle
   useEffect(() => {
     if (!isLive) return;
 
-    const socket = getSocket();
+    const allIds = Array.from(
+      new Set([...connectedStudentIds, ...sessions.map((s) => s.studentId)])
+    );
+    if (allIds.length === 0) {
+      setStudentNames({});
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const userMap: Record<string, User> = {};
+      await Promise.all(
+        allIds.map(async (id) => {
+          const u = await studentService.getStudentById(id);
+          if (u) userMap[id] = u;
+        })
+      );
+      if (!cancelled) setStudentNames(userMap);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [connectedStudentIds, sessions, isLive]);
+
+  useEffect(() => {
+    if (!isLive) {
+      setConnectedStudentIds([]);
+      return;
+    }
+
+    const socket = connectSocket();
+    if (!socket.connected) socket.connect();
+
+    const matchesExam = (payload: SocketStudentPayload) =>
+      !payload.examId || payload.examId === examId;
+
+    const addConnected = (studentId: string) => {
+      setConnectedStudentIds((prev) =>
+        prev.includes(studentId) ? prev : [...prev, studentId]
+      );
+    };
+
+    const removeConnected = (studentId: string) => {
+      setConnectedStudentIds((prev) => prev.filter((id) => id !== studentId));
+    };
+
+    const onRoster = ({ examId: eid, students }: { examId: string; students: SocketStudentPayload[] }) => {
+      if (eid !== examId) return;
+      setConnectedStudentIds(students.map((s) => s.studentId));
+    };
+
+    const onJoined = (payload: SocketStudentPayload) => {
+      if (!matchesExam(payload)) return;
+      addConnected(payload.studentId);
+      refresh();
+    };
+
+    const onLeft = (payload: SocketStudentPayload) => {
+      if (!matchesExam(payload)) return;
+      removeConnected(payload.studentId);
+    };
 
     const onProgress = () => refresh();
     const onSubmitted = () => refresh();
-    const onJoined = () => refresh();
-    const onLeft = () => refresh();
 
-    socket.on("session:studentProgress",  onProgress);
+    socket.on("session:roster", onRoster);
+    socket.on("session:studentJoined", onJoined);
+    socket.on("session:studentLeft", onLeft);
+    socket.on("session:studentProgress", onProgress);
     socket.on("session:studentSubmitted", onSubmitted);
-    socket.on("session:studentJoined",    onJoined);
-    socket.on("session:studentLeft",      onLeft);
 
     return () => {
-      socket.off("session:studentProgress",  onProgress);
+      socket.off("session:roster", onRoster);
+      socket.off("session:studentJoined", onJoined);
+      socket.off("session:studentLeft", onLeft);
+      socket.off("session:studentProgress", onProgress);
       socket.off("session:studentSubmitted", onSubmitted);
-      socket.off("session:studentJoined",    onJoined);
-      socket.off("session:studentLeft",      onLeft);
     };
-  }, [isLive, refresh]);
+  }, [examId, isLive, refresh]);
 
-  return { ...data, refresh };
+  return {
+    connectedStudentIds,
+    sessions,
+    studentNames,
+    isRefreshing,
+    refresh,
+  };
 }

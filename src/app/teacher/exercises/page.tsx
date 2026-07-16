@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import { TypeSelectorModal } from "@/components/exercises/TypeSelectorModal";
 import type { ExerciseTypeKey } from "@/components/exercises/exerciseTypeCatalog";
 import type { Exercise } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import {
   BookOpen,
   Copy,
@@ -86,7 +87,6 @@ const TYPE_META: Record<string, { label: string; badge: string; icon: React.Reac
 };
 
 const ALL_FILTER = "all";
-const MAX_EXERCISES_PER_TYPE = 2;
 
 function duplicateTitle(title: string): string {
   return `${title} (Copy)`;
@@ -138,18 +138,7 @@ export default function ExerciseLibraryPage() {
     return matchSearch && matchType;
   });
 
-  /** Same order as `filtered`, but at most two cards per exercise `type`. */
-  const displayedExercises = useMemo(() => {
-    const counts = new Map<string, number>();
-    const out: typeof filtered = [];
-    for (const ex of filtered) {
-      const n = counts.get(ex.type) ?? 0;
-      if (n >= MAX_EXERCISES_PER_TYPE) continue;
-      counts.set(ex.type, n + 1);
-      out.push(ex);
-    }
-    return out;
-  }, [filtered]);
+  const displayedExercises = filtered;
 
   // ---- Type selector → builder ---
   const handleTypeSelected = (type: ExerciseTypeKey) => {
@@ -334,11 +323,14 @@ export default function ExerciseLibraryPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           key={i}
-                          src={src}
+                          src={resolveMediaUrl(src)}
                           alt={`Image ${i + 1}`}
                           className="w-full rounded border border-border object-contain bg-muted"
                           style={{ aspectRatio: "4/3", maxHeight: 80 }}
                           draggable={false}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.opacity = "0.35";
+                          }}
                         />
                       ))}
                     </div>
@@ -349,7 +341,7 @@ export default function ExerciseLibraryPage() {
                     <div className="p-2.5 pb-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={ex.question.shapeCopyConfig.rows[0].model_snapshot}
+                        src={resolveMediaUrl(ex.question.shapeCopyConfig.rows[0].model_snapshot)}
                         alt="Model shape"
                         className="w-full rounded border border-border object-contain bg-[#f8f8f8]"
                         style={{ aspectRatio: "4/3", maxHeight: 80 }}
@@ -368,7 +360,7 @@ export default function ExerciseLibraryPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           key={cell.cell_label}
-                          src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(cell.design_svg)}`}
+                          src={resolveMediaUrl(cell.design_svg)}
                           alt={`Cell ${cell.cell_label}`}
                           className="w-full rounded border border-border object-contain bg-white"
                           style={{ aspectRatio: "1/1", maxHeight: 80 }}

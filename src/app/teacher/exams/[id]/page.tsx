@@ -16,13 +16,14 @@ import { exerciseLibraryService } from "@/services/exerciseLibrary.service";
 import type { Exam, Exercise, ExamSubmission, User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useLiveSession } from "@/contexts/LiveSessionContext";
-import { getSocket } from "@/lib/socket";
+import { connectSocket } from "@/lib/socket";
 import {
   BookOpen,
   Clock,
   Eye,
   FileText,
   ImageIcon,
+  Pencil,
   Play,
   Square,
   Users,
@@ -73,7 +74,7 @@ export default function ExamDetailPage() {
   const router = useRouter();
   const examId = params.id as string;
   const { toast } = useToast();
-  const { refreshSession } = useLiveSession();
+  const { refreshSession, setActiveExamId } = useLiveSession();
 
   const [exam, setExam] = useState<Exam | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -129,11 +130,22 @@ export default function ExamDetailPage() {
   // Re-join socket room when page loads with an already-live exam
   useEffect(() => {
     if (exam?.isLive) {
-      getSocket().emit("teacher:openSession", { examId });
-      liveSessionService.startLiveSession(examId);
-      refreshSession(examId);
+      setActiveExamId(examId);
+      const socket = connectSocket();
+      const open = () => {
+        socket.emit("teacher:openSession", { examId });
+        liveSessionService.startLiveSession(examId);
+        refreshSession(examId);
+      };
+      if (socket.connected) {
+        open();
+      } else {
+        socket.connect();
+        socket.once("connect", open);
+      }
     }
-  }, [exam?.isLive, examId, refreshSession]);
+    return () => setActiveExamId(null);
+  }, [exam?.isLive, examId, refreshSession, setActiveExamId]);
 
   const handleOpenSession = async () => {
     try {
@@ -189,8 +201,17 @@ export default function ExamDetailPage() {
     router.push(`/teacher/reports/${studentId}/${examId}`);
   };
 
-  // ---- Derive which students are online vs offline ----
-  const onlineSet = new Set(connectedStudentIds);
+  // Students currently active (socket-connected or DB session online/away)
+  const activeStudentIds = Array.from(
+    new Set([
+      ...connectedStudentIds,
+      ...sessions
+        .filter((s) => s.status === "online" || s.status === "away")
+        .map((s) => s.studentId),
+    ])
+  );
+
+  const onlineSet = new Set(activeStudentIds);
   const offlineStudents = assignedStudents.filter((s) => !onlineSet.has(s.id));
 
   // ---- For timeline rendering ----
@@ -226,6 +247,15 @@ export default function ExamDetailPage() {
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
+            {!exam.isLive && (
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/teacher/exams/${examId}/edit`)}
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit Exam
+              </Button>
+            )}
             <Button
               variant="outline"
               disabled={exam.isLive}
@@ -357,11 +387,11 @@ export default function ExamDetailPage() {
                   <p className="text-sm text-muted-foreground">
                     Open the live session to start monitoring students in real time.
                   </p>
-                ) : connectedStudentIds.length === 0 ? (
+                ) : activeStudentIds.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No students connected yet.</p>
                 ) : (
                   <div className="space-y-3">
-                    {connectedStudentIds.map((sid) => {
+                    {activeStudentIds.map((sid) => {
                       const session = getSession(sid);
                       const user = studentNames[sid];
                       const name = user?.name ?? sid;

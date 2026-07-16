@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { examService } from "@/services/exam.service";
 import { Exam } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, FileText, Clock, Users } from "lucide-react";
+import { Plus, FileText, Clock, Pencil } from "lucide-react";
 import { format } from "date-fns";
 
 export default function TeacherExamsPage() {
@@ -97,6 +97,15 @@ export default function TeacherExamsPage() {
                   >
                     View Details
                   </Button>
+                  {!exam.isLive && (
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push(`/teacher/exams/${exam.id}/edit`)}
+                      title="Edit exam"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

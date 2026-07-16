@@ -1,4 +1,4 @@
-import { Exam, ExamSubmission, Answer } from "@/types";
+import { Exam, ExamSubmission, Answer, StudentExamSession } from "@/types";
 import { api } from "@/lib/api";
 import {
   ApiExam,
@@ -6,7 +6,7 @@ import {
   buildExam,
 } from "@/lib/examMapper";
 import { exerciseLibraryService } from "./exerciseLibrary.service";
-import { getSocket } from "@/lib/socket";
+import { connectSocket, getSocket } from "@/lib/socket";
 
 interface ExamsListResponse {
   exams: ApiExam[];
@@ -20,6 +20,23 @@ interface ExamDetailResponse {
 
 interface SubmissionsResponse {
   submissions: ExamSubmission[];
+}
+
+interface ExamSessionsResponse {
+  sessions: StudentExamSession[];
+}
+
+async function ensureSocketConnected(): Promise<void> {
+  const socket = connectSocket();
+  if (socket.connected) return;
+  await new Promise<void>((resolve) => {
+    if (socket.connected) {
+      resolve();
+      return;
+    }
+    socket.once("connect", () => resolve());
+    socket.connect();
+  });
 }
 
 async function loadFullExam(
@@ -110,6 +127,15 @@ export const examService = {
     return loadFullExam(data.exam, data.exercises, data.assignedStudentIds ?? []);
   },
 
+  getExamSessions: async (examId: string): Promise<StudentExamSession[]> => {
+    try {
+      const data = await api.get<ExamSessionsResponse>(`/api/exams/${examId}/sessions`);
+      return data.sessions;
+    } catch {
+      return [];
+    }
+  },
+
   updateExam: async (examId: string, updates: Partial<Exam>): Promise<Exam | null> => {
     const current = await examService.getExamById(examId);
     if (!current) return null;
@@ -135,6 +161,7 @@ export const examService = {
   },
 
   openLiveSession: async (examId: string): Promise<Exam | null> => {
+    await ensureSocketConnected();
     const updated = await examService.updateExam(examId, { isLive: true });
     if (updated) {
       getSocket().emit("teacher:openSession", { examId });
@@ -144,7 +171,9 @@ export const examService = {
 
   closeLiveSession: async (examId: string): Promise<Exam | null> => {
     getSocket().emit("teacher:closeSession", { examId });
-    return examService.updateExam(examId, { isLive: false });
+    const current = await examService.getExamById(examId);
+    if (!current) return null;
+    return examService.updateExam(examId, { ...current, isLive: false });
   },
 
   submitExam: async (
