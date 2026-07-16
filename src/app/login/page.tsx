@@ -34,21 +34,6 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Already signed in (same browser, another tab or returning visit)
-  useEffect(() => {
-    if (!authLoading && user) {
-      router.replace(`/${user.role}/dashboard`);
-    }
-  }, [authLoading, user, router]);
-
-  if (authLoading || user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-      </div>
-    );
-  }
-
   const {
     register,
     handleSubmit,
@@ -63,6 +48,13 @@ export default function LoginPage() {
   });
 
   const selectedRole = watch("role");
+
+  // Already signed in (same browser, another tab or returning visit)
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace(`/${user.role}/dashboard`);
+    }
+  }, [authLoading, user, router]);
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -91,6 +83,14 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  if (authLoading || user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4">
