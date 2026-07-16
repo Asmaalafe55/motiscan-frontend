@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { examService } from "@/services/exam.service";
 import type { Exam } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { BookOpen, FileText, User } from "lucide-react";
+import { BookOpen, CheckCircle2, FileText, User } from "lucide-react";
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -69,10 +69,12 @@ export default function StudentDashboard() {
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {liveExams.map((exam) => (
+            {liveExams.map((exam) => {
+              const alreadySubmitted = exam.hasSubmitted === true;
+              return (
               <Card
                 key={exam.id}
-                className="hover:shadow-lg transition-shadow border-green-200"
+                className={`hover:shadow-lg transition-shadow ${alreadySubmitted ? "border-blue-200" : "border-green-200"}`}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -82,10 +84,17 @@ export default function StudentDashboard() {
                         <CardDescription className="mt-1 line-clamp-2">{exam.description}</CardDescription>
                       )}
                     </div>
-                    <span className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
-                      <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                      Live
-                    </span>
+                    {alreadySubmitted ? (
+                      <span className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Submitted
+                      </span>
+                    ) : (
+                      <span className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                        Live
+                      </span>
+                    )}
                   </div>
                 </CardHeader>
 
@@ -103,17 +112,29 @@ export default function StudentDashboard() {
                     )}
                   </div>
 
-                  <Button
-                    variant="gradient"
-                    className="w-full"
-                    onClick={() => router.push(`/student/exam/${exam.id}`)}
-                  >
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Enter Exam
-                  </Button>
+                  {alreadySubmitted ? (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => router.push("/student/history")}
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      View in History
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="gradient"
+                      className="w-full"
+                      onClick={() => router.push(`/student/exam/${exam.id}`)}
+                    >
+                      <BookOpen className="h-4 w-4 mr-2" />
+                      Enter Exam
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

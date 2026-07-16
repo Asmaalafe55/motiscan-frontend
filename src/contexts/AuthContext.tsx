@@ -1,9 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { User, UserRole } from "@/types";
 import { authService } from "@/services/auth.service";
-import { getToken } from "@/lib/api";
+import { getToken, subscribeAuthChanges } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -18,18 +18,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const restore = async () => {
-      if (!getToken()) {
-        setIsLoading(false);
-        return;
-      }
-      const userData = await authService.getCurrentUser();
-      setUser(userData);
+  const restoreSession = useCallback(async () => {
+    if (!getToken()) {
+      setUser(null);
       setIsLoading(false);
-    };
-    restore();
+      return;
+    }
+
+    setIsLoading(true);
+    const userData = await authService.getCurrentUser();
+    setUser(userData);
+    setIsLoading(false);
   }, []);
+
+  useEffect(() => {
+    restoreSession();
+    return subscribeAuthChanges(() => {
+      restoreSession();
+    });
+  }, [restoreSession]);
 
   const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
     setIsLoading(true);

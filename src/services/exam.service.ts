@@ -1,5 +1,5 @@
 import { Exam, ExamSubmission, Answer, StudentExamSession } from "@/types";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import {
   ApiExam,
   ApiExamExercise,
@@ -58,6 +58,7 @@ function summaryExam(exam: ApiExam): Exam {
     teacherId: exam.teacherId,
     createdAt: exam.createdAt,
     isLive: exam.isLive,
+    hasSubmitted: exam.hasSubmitted ?? false,
     duration: exam.duration ?? undefined,
     exerciseIds: [],
     assignedStudentIds: [],
@@ -104,6 +105,16 @@ export const examService = {
   getExamForStudent: async (examId: string): Promise<Exam | null> => {
     try {
       const data = await api.get<ExamDetailResponse>(`/api/student/exams/${examId}`);
+      return loadFullExam(data.exam, data.exercises);
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      return null;
+    }
+  },
+
+  getSubmittedExamForStudent: async (examId: string): Promise<Exam | null> => {
+    try {
+      const data = await api.get<ExamDetailResponse>(`/api/student/exams/${examId}/submitted`);
       return loadFullExam(data.exam, data.exercises);
     } catch {
       return null;
