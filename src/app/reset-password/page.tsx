@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { authService } from "@/services/auth.service";
+import { ApiError } from "@/lib/api";
 import { GraduationCap, KeyRound, CheckCircle2 } from "lucide-react";
 
 const schema = z
@@ -60,31 +62,16 @@ function ResetPasswordForm() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"}/api/auth/reset-password`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, newPassword: data.newPassword }),
-        }
-      );
-
-      const body = await res.json();
-
-      if (!res.ok) {
-        toast({
-          title: "Reset failed",
-          description: body.message ?? "Something went wrong.",
-          variant: "destructive",
-        });
-        return;
-      }
-
+      await authService.resetPassword(token, data.newPassword);
       setDone(true);
-    } catch {
+    } catch (err) {
+      const description =
+        err instanceof ApiError
+          ? err.message
+          : "Could not reach the server. Please try again.";
       toast({
-        title: "Network error",
-        description: "Could not reach the server. Please try again.",
+        title: "Reset failed",
+        description,
         variant: "destructive",
       });
     } finally {

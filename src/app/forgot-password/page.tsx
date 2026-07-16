@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { authService } from "@/services/auth.service";
+import { ApiError } from "@/lib/api";
 import { GraduationCap, MailCheck } from "lucide-react";
 
 const schema = z.object({
@@ -38,20 +40,16 @@ export default function ForgotPasswordPage() {
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
-      await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"}/api/auth/forgot-password`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: data.email }),
-        }
-      );
-      // Always show success — backend never reveals if the email exists
+      await authService.requestPasswordReset(data.email);
       setDone(true);
-    } catch {
+    } catch (err) {
+      const description =
+        err instanceof ApiError
+          ? err.message
+          : "Could not reach the server. Please try again.";
       toast({
-        title: "Network error",
-        description: "Could not reach the server. Please try again.",
+        title: "Could not send reset link",
+        description,
         variant: "destructive",
       });
     } finally {

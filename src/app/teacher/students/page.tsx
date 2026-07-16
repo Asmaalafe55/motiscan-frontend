@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { studentService } from "@/services/student.service";
+import { ApiError } from "@/lib/api";
 import { User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -90,10 +91,28 @@ function EditModal({ student, onClose, onSaved }: EditModalProps) {
 
   const handleSendReset = async () => {
     setIsSendingReset(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setIsSendingReset(false);
-    setShowResetConfirm(false);
-    toast({ title: "Reset link sent", description: `Reset link sent to ${student.email}` });
+    try {
+      const message = await studentService.sendPasswordReset(student.id);
+      setShowResetConfirm(false);
+      toast({
+        title: "Reset link sent",
+        description: message,
+      });
+    } catch (err) {
+      const description =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to send reset link.";
+      toast({
+        title: "Could not send reset link",
+        description,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingReset(false);
+    }
   };
 
   return (

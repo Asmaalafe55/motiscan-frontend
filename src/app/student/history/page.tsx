@@ -14,7 +14,7 @@ import { format } from "date-fns";
 // Read-only view modal
 // ---------------------------------------------------------------------------
 interface ViewModalProps {
-  submission: ExamSubmission & { exam?: Exam };
+  submission: HistorySubmission;
   onClose: () => void;
 }
 
@@ -63,7 +63,7 @@ function ViewModal({ submission, onClose }: ViewModalProps) {
           </div>
 
           {/* Answers */}
-          {exam && exam.questions.length > 0 && (
+          {exam && "questions" in exam && exam.questions.length > 0 && (
             <div className="space-y-4">
               <p className="text-sm font-semibold text-gray-700">Your Answers</p>
               {exam.questions.map((question, idx) => {
@@ -106,29 +106,25 @@ function ViewModal({ submission, onClose }: ViewModalProps) {
   );
 }
 
+type HistorySubmission = ExamSubmission & {
+  exam?: Exam | NonNullable<ExamSubmission["exam"]>;
+};
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 export default function StudentHistoryPage() {
   const { user } = useAuth();
-  const [submissions, setSubmissions] = useState<(ExamSubmission & { exam?: Exam })[]>([]);
+  const [submissions, setSubmissions] = useState<HistorySubmission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewingSubmission, setViewingSubmission] = useState<
-    (ExamSubmission & { exam?: Exam }) | null
-  >(null);
+  const [viewingSubmission, setViewingSubmission] = useState<HistorySubmission | null>(null);
 
   useEffect(() => {
     const fetchSubmissions = async () => {
       if (!user) return;
       try {
         const submissionsData = await examService.getMySubmissions();
-        const submissionsWithExams = await Promise.all(
-          submissionsData.map(async (submission) => {
-            const exam = await examService.getExamById(submission.examId);
-            return { ...submission, exam: exam ?? undefined };
-          })
-        );
-        setSubmissions(submissionsWithExams);
+        setSubmissions(submissionsData);
       } catch (error) {
         console.error("Error fetching submissions:", error);
       } finally {
@@ -138,6 +134,26 @@ export default function StudentHistoryPage() {
 
     fetchSubmissions();
   }, [user]);
+
+  const handleViewSubmission = async (submission: HistorySubmission) => {
+    setViewingSubmission(submission);
+
+    const hasQuestions =
+      submission.exam &&
+      "questions" in submission.exam &&
+      submission.exam.questions.length > 0;
+    if (hasQuestions) return;
+
+    const fullExam = await examService.getSubmittedExamForStudent(submission.examId);
+    if (!fullExam) return;
+
+    setViewingSubmission({ ...submission, exam: fullExam });
+    setSubmissions((prev) =>
+      prev.map((item) =>
+        item.id === submission.id ? { ...item, exam: fullExam } : item
+      )
+    );
+  };
 
   if (isLoading) {
     return (
@@ -201,7 +217,7 @@ export default function StudentHistoryPage() {
                   <Button
                     variant="outline"
                     className="gap-2"
-                    onClick={() => setViewingSubmission(submission)}
+                    onClick={() => handleViewSubmission(submission)}
                   >
                     <Eye className="h-4 w-4" />
                     View Submission

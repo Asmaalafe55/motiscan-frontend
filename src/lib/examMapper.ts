@@ -11,6 +11,7 @@ export interface ApiExam {
   duration?: number | null;
   createdAt: string;
   exerciseCount?: number;
+  hasSubmitted?: boolean;
 }
 
 export interface ApiExamExercise {
@@ -117,6 +118,7 @@ export function buildExam(
     teacherId: exam.teacherId,
     createdAt: exam.createdAt,
     isLive: exam.isLive,
+    hasSubmitted: exam.hasSubmitted ?? false,
     duration: exam.duration ?? undefined,
     exerciseIds: sorted.map((l) => l.exerciseId),
     assignedStudentIds,
