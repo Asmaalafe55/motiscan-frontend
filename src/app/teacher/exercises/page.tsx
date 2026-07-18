@@ -23,6 +23,7 @@ import { ExercisePreviewModal } from "@/components/exercises/ExercisePreviewModa
 import { TypeSelectorModal } from "@/components/exercises/TypeSelectorModal";
 import type { ExerciseTypeKey } from "@/components/exercises/exerciseTypeCatalog";
 import type { Exercise } from "@/types";
+import { toImageSrc } from "@/lib/svg";
 import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen,
@@ -349,7 +350,7 @@ export default function ExerciseLibraryPage() {
                     <div className="p-2.5 pb-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={ex.question.shapeCopyConfig.rows[0].model_snapshot}
+                        src={toImageSrc(ex.question.shapeCopyConfig.rows[0].model_snapshot)}
                         alt="Model shape"
                         className="w-full rounded border border-border object-contain bg-[#f8f8f8]"
                         style={{ aspectRatio: "4/3", maxHeight: 80 }}

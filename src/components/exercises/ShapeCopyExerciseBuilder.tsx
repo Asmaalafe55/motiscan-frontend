@@ -17,6 +17,7 @@ import type { ToolType } from "./canvas/ShapeCanvas";
 import { ShapeCopyExercise } from "./ShapeCopyExercise";
 import { Eye, Loader2, Plus, Trash2 } from "lucide-react";
 import type { Exercise, ShapeCopyRow, ShapeCopyRule, ShapeCopyConfig } from "@/types";
+import { toImageSrc } from "@/lib/svg";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -369,7 +370,7 @@ export function ShapeCopyExerciseBuilder({
                 <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={row.modelSnapshot}
+                    src={toImageSrc(row.modelSnapshot)}
                     alt="Current model shape"
                     className="h-16 w-16 flex-shrink-0 rounded border border-amber-200 bg-white object-contain"
                     draggable={false}

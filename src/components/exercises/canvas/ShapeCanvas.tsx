@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import type { DrawnShapeData } from "@/types";
+import { toImageSrc } from "@/lib/svg";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -368,7 +369,7 @@ export const ShapeCanvas = forwardRef<ShapeCanvasHandle, ShapeCanvasProps>(
         img.onload = () => {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         };
-        img.src = modelSnapshot;
+        img.src = toImageSrc(modelSnapshot);
         return;
       }
 
@@ -757,7 +758,7 @@ export const ShapeCanvas = forwardRef<ShapeCanvasHandle, ShapeCanvasProps>(
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       };
-      img.src = modelSnapshot;
+      img.src = toImageSrc(modelSnapshot);
     }, [readOnly, modelSnapshot]);
 
     // ---------------------------------------------------------------------------
