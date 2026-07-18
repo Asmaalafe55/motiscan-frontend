@@ -7,6 +7,14 @@ import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { examService } from "@/services/exam.service";
 import { liveSessionService } from "@/services/liveSession.service";
 import { studentService } from "@/services/student.service";
@@ -29,6 +37,10 @@ import {
   Star,
   SlidersHorizontal,
   BarChart2,
+  UserPlus,
+  Plus,
+  Check,
+  Loader2,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -82,6 +94,13 @@ export default function ExamDetailPage() {
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
   const [submissions, setSubmissions] = useState<ExamSubmission[]>([]);
   const [reportLoadingFor, setReportLoadingFor] = useState<string | null>(null);
+
+  // Add-students dialog state
+  const [addOpen, setAddOpen] = useState(false);
+  const [allStudents, setAllStudents] = useState<User[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [selectedToAdd, setSelectedToAdd] = useState<string[]>([]);
+  const [savingStudents, setSavingStudents] = useState(false);
 
   // Live session hook (auto-polls every 10s when isLive)
   const { connectedStudentIds, sessions, studentNames } = useExamSession(
@@ -154,6 +173,50 @@ export default function ExamDetailPage() {
       toast({ title: "Session closed", description: "The exam is no longer available to students." });
     } catch {
       toast({ title: "Error", description: "Failed to close session.", variant: "destructive" });
+    }
+  };
+
+  const openAddStudents = async () => {
+    setSelectedToAdd([]);
+    setAddOpen(true);
+    if (allStudents.length === 0) {
+      setStudentsLoading(true);
+      try {
+        const students = await studentService.getAllStudents();
+        setAllStudents(students);
+      } catch {
+        toast({ title: "Error", description: "Failed to load students.", variant: "destructive" });
+      } finally {
+        setStudentsLoading(false);
+      }
+    }
+  };
+
+  const toggleStudentToAdd = (id: string) => {
+    setSelectedToAdd((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
+
+  const handleAddStudents = async () => {
+    if (selectedToAdd.length === 0) return;
+    setSavingStudents(true);
+    try {
+      const updatedIds = await examService.addStudentsToExam(examId, selectedToAdd);
+      // Refresh the assigned-students list and the exam's id list.
+      const students = await studentService.getStudentsByIds(updatedIds);
+      setAssignedStudents(students);
+      setExam((prev) => (prev ? { ...prev, assignedStudentIds: updatedIds } : prev));
+      toast({
+        title: "Students added",
+        description: `${selectedToAdd.length} student${selectedToAdd.length !== 1 ? "s" : ""} assigned to this exam.`,
+      });
+      setAddOpen(false);
+      setSelectedToAdd([]);
+    } catch {
+      toast({ title: "Error", description: "Failed to add students.", variant: "destructive" });
+    } finally {
+      setSavingStudents(false);
     }
   };
 
@@ -310,15 +373,32 @@ export default function ExamDetailPage() {
             </Card>
 
             {/* Assigned students summary */}
-            {assignedStudents.length > 0 && (
-              <Card>
-                <CardHeader>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between gap-2">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Users className="h-4 w-4" />
                     Assigned Students
+                    {assignedStudents.length > 0 && (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        ({assignedStudents.length})
+                      </span>
+                    )}
                   </CardTitle>
-                </CardHeader>
-                <CardContent>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    onClick={openAddStudents}
+                    title="Add students to this exam"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {assignedStudents.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {assignedStudents.map((s) => (
                       <div key={s.id} className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm">
@@ -329,9 +409,13 @@ export default function ExamDetailPage() {
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No students assigned yet. Use <span className="font-medium">Add</span> to assign students.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* ═══════════════════════════════════════
@@ -556,6 +640,98 @@ export default function ExamDetailPage() {
         open={!!previewExercise}
         onClose={() => setPreviewExercise(null)}
       />
+
+      {/* Add students dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Add Students
+            </DialogTitle>
+            <DialogDescription>
+              Choose students to assign to this exam. Already-assigned students are not shown.
+            </DialogDescription>
+          </DialogHeader>
+
+          {studentsLoading ? (
+            <div className="flex items-center justify-center py-10 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              Loading students…
+            </div>
+          ) : (
+            (() => {
+              const assignedIdSet = new Set(assignedStudents.map((s) => s.id));
+              const available = allStudents.filter((s) => !assignedIdSet.has(s.id));
+              if (available.length === 0) {
+                return (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    All students are already assigned to this exam.
+                  </p>
+                );
+              }
+              return (
+                <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1">
+                  {available.map((student) => {
+                    const sel = selectedToAdd.includes(student.id);
+                    return (
+                      <button
+                        key={student.id}
+                        type="button"
+                        onClick={() => toggleStudentToAdd(student.id)}
+                        className={`flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition-colors ${
+                          sel ? "border-blue-500 bg-blue-50" : "hover:bg-muted/40"
+                        }`}
+                      >
+                        <span className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0">
+                          {getInitials(student.name)}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{student.name}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {student.email}
+                            {student.grade ? ` · ${student.grade}` : ""}
+                          </p>
+                        </div>
+                        <span
+                          className={`h-5 w-5 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                            sel ? "bg-blue-600 border-blue-600 text-white" : "border-muted-foreground/30"
+                          }`}
+                        >
+                          {sel && <Check className="h-3.5 w-3.5" />}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)} disabled={savingStudents}>
+              Cancel
+            </Button>
+            <Button
+              variant="gradient"
+              onClick={handleAddStudents}
+              disabled={selectedToAdd.length === 0 || savingStudents}
+            >
+              {savingStudents ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Adding…
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add {selectedToAdd.length > 0 ? `(${selectedToAdd.length})` : ""}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

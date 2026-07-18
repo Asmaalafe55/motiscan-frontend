@@ -134,6 +134,16 @@ export const examService = {
     return loadFullExam(data.exam, data.exercises, data.assignedStudentIds ?? []);
   },
 
+  // Append students to an existing exam without replacing current assignments.
+  // Returns the full, updated list of assigned student ids.
+  addStudentsToExam: async (examId: string, studentIds: string[]): Promise<string[]> => {
+    const data = await api.post<{ assignedStudentIds: string[] }>(
+      `/api/exams/${examId}/students`,
+      { studentIds }
+    );
+    return data.assignedStudentIds ?? [];
+  },
+
   openLiveSession: async (examId: string): Promise<Exam | null> => {
     const updated = await examService.updateExam(examId, { isLive: true });
     if (updated) {
