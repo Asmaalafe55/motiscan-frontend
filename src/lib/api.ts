@@ -5,7 +5,8 @@ const AUTH_CHANGE_EVENT = "motiscan-auth-change";
 export class ApiError extends Error {
   constructor(
     message: string,
-    public status: number
+    public status: number,
+    public code?: string
   ) {
     super(message);
     this.name = "ApiError";
@@ -49,15 +50,43 @@ function handleUnauthorized(): void {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+const DEFAULT_TIMEOUT_MS = 30000;
+
+interface RequestOptions extends RequestInit {
+  timeoutMs?: number;
+}
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, ...fetchOptions } = options;
   const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
+    ...(fetchOptions.headers as Record<string, string>),
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...fetchOptions,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new ApiError(
+        "Request timed out. Please try again.",
+        408,
+        "TIMEOUT"
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (res.status === 401) {
     handleUnauthorized();
@@ -77,10 +106,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, data?: unknown) =>
-    request<T>(path, { method: "POST", body: JSON.stringify(data ?? {}) }),
-  put: <T>(path: string, data?: unknown) =>
-    request<T>(path, { method: "PUT", body: JSON.stringify(data ?? {}) }),
-  delete: (path: string) => request<void>(path, { method: "DELETE" }),
+  get: <T>(path: string, options?: RequestOptions) => request<T>(path, options),
+  post: <T>(path: string, data?: unknown, options?: RequestOptions) =>
+    request<T>(path, {
+      method: "POST",
+      body: JSON.stringify(data ?? {}),
+      ...options,
+    }),
+  put: <T>(path: string, data?: unknown, options?: RequestOptions) =>
+    request<T>(path, {
+      method: "PUT",
+      body: JSON.stringify(data ?? {}),
+      ...options,
+    }),
+  delete: (path: string, options?: RequestOptions) =>
+    request<void>(path, { method: "DELETE", ...options }),
 };

@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { authService } from "@/services/auth.service";
-import { ApiError } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 import { GraduationCap, KeyRound, CheckCircle2 } from "lucide-react";
 
 const schema = z
@@ -43,6 +43,7 @@ function ResetPasswordForm() {
 
   const [done, setDone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -61,14 +62,13 @@ function ResetPasswordForm() {
     }
 
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       await authService.resetPassword(token, data.newPassword);
       setDone(true);
     } catch (err) {
-      const description =
-        err instanceof ApiError
-          ? err.message
-          : "Could not reach the server. Please try again.";
+      const description = getApiErrorMessage(err, "Could not reach the server. Please try again.");
+      setSubmitError(description);
       toast({
         title: "Reset failed",
         description,
@@ -189,6 +189,12 @@ function ResetPasswordForm() {
             >
               {isSubmitting ? "Resetting…" : "Reset Password"}
             </Button>
+
+            {submitError && (
+              <p className="text-sm text-destructive text-center" role="alert">
+                {submitError}
+              </p>
+            )}
 
             <Button
               type="button"

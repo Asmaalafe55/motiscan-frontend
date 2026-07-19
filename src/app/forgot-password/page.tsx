@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { authService } from "@/services/auth.service";
-import { ApiError } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 import { GraduationCap, MailCheck } from "lucide-react";
 
 const schema = z.object({
@@ -30,6 +30,7 @@ export default function ForgotPasswordPage() {
   const { toast } = useToast();
   const [done, setDone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -39,14 +40,16 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       await authService.requestPasswordReset(data.email);
       setDone(true);
     } catch (err) {
-      const description =
-        err instanceof ApiError
-          ? err.message
-          : "Could not reach the server. Please try again.";
+      const description = getApiErrorMessage(
+        err,
+        "Could not reach the server. Please try again."
+      );
+      setSubmitError(description);
       toast({
         title: "Could not send reset link",
         description,
@@ -125,6 +128,12 @@ export default function ForgotPasswordPage() {
             >
               {isSubmitting ? "Sending…" : "Send Reset Link"}
             </Button>
+
+            {submitError && (
+              <p className="text-sm text-destructive text-center" role="alert">
+                {submitError}
+              </p>
+            )}
 
             <Button
               type="button"

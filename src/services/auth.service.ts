@@ -35,16 +35,19 @@ export const authService = {
   },
 
   requestPasswordReset: async (email: string): Promise<string> => {
-    const data = await api.post<{ message: string }>("/api/auth/forgot-password", {
-      email: email.trim(),
-    });
+    const data = await api.post<{ message: string }>(
+      "/api/auth/forgot-password",
+      { email: email.trim() },
+      { timeoutMs: 25000 }
+    );
     return data.message;
   },
 
   resetPassword: async (token: string, newPassword: string): Promise<void> => {
-    await api.post<{ message: string }>("/api/auth/reset-password", {
-      token,
-      newPassword,
-    });
+    await api.post<{ message: string }>(
+      "/api/auth/reset-password",
+      { token, newPassword },
+      { timeoutMs: 25000 }
+    );
   },
 };
