@@ -1,7 +1,6 @@
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000").replace(
-  /\/$/,
-  ""
-);
+import { getApiBaseUrl } from "@/lib/getApiBaseUrl";
+
+const API_URL = getApiBaseUrl();
 
 /** Turn exercise media paths/inline SVG into a browser-loadable URL. */
 export function resolveMediaUrl(src: string | undefined | null): string {

@@ -1,6 +1,8 @@
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+import { getApiBaseUrl } from "@/lib/getApiBaseUrl";
+
+const SOCKET_URL = getApiBaseUrl();
 
 let socket: Socket | null = null;
 

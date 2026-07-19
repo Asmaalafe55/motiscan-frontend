@@ -1,5 +1,5 @@
 import { User, UserRole } from "@/types";
-import { api, setToken } from "@/lib/api";
+import { api, ApiError, setToken } from "@/lib/api";
 
 interface AuthResponse {
   token: string;
@@ -16,7 +16,8 @@ export const authService = {
       const data = await api.post<AuthResponse>("/api/auth/login", { email, password, role });
       setToken(data.token);
       return data.user;
-    } catch {
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
       return null;
     }
   },

@@ -1,4 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+import { getApiBaseUrl } from "@/lib/getApiBaseUrl";
+
+const API_URL = getApiBaseUrl();
 const TOKEN_KEY = "token";
 const AUTH_CHANGE_EVENT = "motiscan-auth-change";
 
