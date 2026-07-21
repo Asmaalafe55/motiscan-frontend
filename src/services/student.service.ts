@@ -49,4 +49,13 @@ export const studentService = {
       return false;
     }
   },
+
+  sendPasswordReset: async (studentId: string): Promise<string> => {
+    const data = await api.post<{ message: string }>(
+      `/api/students/${studentId}/send-password-reset`,
+      {},
+      { timeoutMs: 25000 }
+    );
+    return data.message;
+  },
 };

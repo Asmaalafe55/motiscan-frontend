@@ -205,6 +205,8 @@ export interface Exam {
   exerciseIds?: string[];
   /** Students assigned to this exam */
   assignedStudentIds?: string[];
+  /** True when the logged-in student has already submitted this exam */
+  hasSubmitted?: boolean;
 }
 
 export interface ExamSubmission {
@@ -215,6 +217,7 @@ export interface ExamSubmission {
   submittedAt: string;
   timeSpent: number; // in seconds
   hasReport?: boolean; // set by the backend submissions-list endpoint
+  exam?: Pick<Exam, "id" | "title" | "description">;
 }
 
 export interface Answer {

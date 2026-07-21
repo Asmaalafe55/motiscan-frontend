@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { studentService } from "@/services/student.service";
+import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 import { User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -52,6 +53,7 @@ function EditModal({ student, onClose, onSaved }: EditModalProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isSendingReset, setIsSendingReset] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -90,10 +92,25 @@ function EditModal({ student, onClose, onSaved }: EditModalProps) {
 
   const handleSendReset = async () => {
     setIsSendingReset(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setIsSendingReset(false);
-    setShowResetConfirm(false);
-    toast({ title: "Reset link sent", description: `Reset link sent to ${student.email}` });
+    setResetError(null);
+    try {
+      const message = await studentService.sendPasswordReset(student.id);
+      setShowResetConfirm(false);
+      toast({
+        title: "Reset link sent",
+        description: message,
+      });
+    } catch (err) {
+      const description = getApiErrorMessage(err, "Failed to send reset link.");
+      setResetError(description);
+      toast({
+        title: "Could not send reset link",
+        description,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingReset(false);
+    }
   };
 
   return (
@@ -171,7 +188,15 @@ function EditModal({ student, onClose, onSaved }: EditModalProps) {
               <p className="text-sm font-medium">Password Reset</p>
             </div>
             {!showResetConfirm ? (
-              <Button variant="outline" size="sm" className="w-full" onClick={() => setShowResetConfirm(true)}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  setResetError(null);
+                  setShowResetConfirm(true);
+                }}
+              >
                 Send Password Reset Link
               </Button>
             ) : (
@@ -186,10 +211,23 @@ function EditModal({ student, onClose, onSaved }: EditModalProps) {
                   <Button size="sm" className="flex-1" disabled={isSendingReset} onClick={handleSendReset}>
                     {isSendingReset ? "Sending…" : "Yes, Send Link"}
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowResetConfirm(false)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      setResetError(null);
+                      setShowResetConfirm(false);
+                    }}
+                  >
                     Cancel
                   </Button>
                 </div>
+                {resetError && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {resetError}
+                  </p>
+                )}
               </div>
             )}
           </div>

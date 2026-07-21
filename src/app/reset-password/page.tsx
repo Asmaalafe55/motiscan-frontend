@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { authService } from "@/services/auth.service";
+import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 import { GraduationCap, KeyRound, CheckCircle2 } from "lucide-react";
 
 const schema = z
@@ -41,6 +43,7 @@ function ResetPasswordForm() {
 
   const [done, setDone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -59,32 +62,16 @@ function ResetPasswordForm() {
     }
 
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"}/api/auth/reset-password`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, newPassword: data.newPassword }),
-        }
-      );
-
-      const body = await res.json();
-
-      if (!res.ok) {
-        toast({
-          title: "Reset failed",
-          description: body.message ?? "Something went wrong.",
-          variant: "destructive",
-        });
-        return;
-      }
-
+      await authService.resetPassword(token, data.newPassword);
       setDone(true);
-    } catch {
+    } catch (err) {
+      const description = getApiErrorMessage(err, "Could not reach the server. Please try again.");
+      setSubmitError(description);
       toast({
-        title: "Network error",
-        description: "Could not reach the server. Please try again.",
+        title: "Reset failed",
+        description,
         variant: "destructive",
       });
     } finally {
@@ -202,6 +189,12 @@ function ResetPasswordForm() {
             >
               {isSubmitting ? "Resetting…" : "Reset Password"}
             </Button>
+
+            {submitError && (
+              <p className="text-sm text-destructive text-center" role="alert">
+                {submitError}
+              </p>
+            )}
 
             <Button
               type="button"

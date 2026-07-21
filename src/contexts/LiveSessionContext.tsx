@@ -10,6 +10,7 @@ interface LiveSessionContextType {
   getSession: (examId: string) => LiveSession | null;
   refreshSession: (examId: string) => Promise<void>;
   isSocketConnected: boolean;
+  setActiveExamId: (examId: string | null) => void;
 }
 
 const LiveSessionContext = createContext<LiveSessionContextType | undefined>(undefined);
@@ -19,9 +20,12 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
   const [isSocketConnected, setIsSocketConnected] = useState(false);
   const activeExamIdRef = useRef<string | null>(null);
 
+  const setActiveExamId = useCallback((examId: string | null) => {
+    activeExamIdRef.current = examId;
+  }, []);
+
   const syncSession = useCallback((examId: string) => {
-    const session = liveSessionService.getLiveSession(examId);
-    session.then((s) => {
+    liveSessionService.getLiveSession(examId).then((s) => {
       if (s) {
         setActiveSessions((prev) => {
           const next = new Map(prev);
@@ -70,20 +74,35 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
       setIsSocketConnected(false);
     };
 
-    const onStudentJoined = (payload: { studentId: string; studentName?: string }) => {
-      const examId = activeExamIdRef.current;
+    const resolveExamId = (payloadExamId?: string) =>
+      payloadExamId ?? activeExamIdRef.current ?? undefined;
+
+    const onStudentJoined = (payload: { examId?: string; studentId: string; studentName?: string }) => {
+      const examId = resolveExamId(payload.examId);
       if (examId && payload.studentId) {
         console.log("[Socket] Student joined:", payload.studentName ?? payload.studentId);
         addConnectedStudent(examId, payload.studentId);
       }
     };
 
-    const onStudentLeft = ({ studentId }: { studentId: string }) => {
-      const examId = activeExamIdRef.current;
+    const onStudentLeft = ({ examId: payloadExamId, studentId }: { examId?: string; studentId: string }) => {
+      const examId = resolveExamId(payloadExamId);
       if (examId && studentId) {
         console.log("[Socket] Student left:", studentId);
         removeConnectedStudent(examId, studentId);
       }
+    };
+
+    const onRoster = ({ examId, students }: { examId: string; students: { studentId: string }[] }) => {
+      if (!examId) return;
+      activeExamIdRef.current = examId;
+      liveSessionService.startLiveSession(examId).then(() => {
+        liveSessionService.setConnectedStudents(
+          examId,
+          students.map((s) => s.studentId)
+        );
+        syncSession(examId);
+      });
     };
 
     const onSessionOpened = ({ examId }: { examId: string }) => {
@@ -109,6 +128,7 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
     socket.on("connect_error", onConnectError);
     socket.on("session:studentJoined", onStudentJoined);
     socket.on("session:studentLeft", onStudentLeft);
+    socket.on("session:roster", onRoster);
     socket.on("session:opened", onSessionOpened);
     socket.on("session:closed", onSessionClosed);
 
@@ -118,6 +138,7 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
       socket.off("connect_error", onConnectError);
       socket.off("session:studentJoined", onStudentJoined);
       socket.off("session:studentLeft", onStudentLeft);
+      socket.off("session:roster", onRoster);
       socket.off("session:opened", onSessionOpened);
       socket.off("session:closed", onSessionClosed);
       disconnectSocket();
@@ -140,7 +161,9 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <LiveSessionContext.Provider value={{ activeSessions, getSession, refreshSession, isSocketConnected }}>
+    <LiveSessionContext.Provider
+      value={{ activeSessions, getSession, refreshSession, isSocketConnected, setActiveExamId }}
+    >
       {children}
     </LiveSessionContext.Provider>
   );

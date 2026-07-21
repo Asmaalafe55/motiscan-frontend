@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/contexts/AuthContext";
+import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 import { UserRole } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,9 +31,10 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const {
     register,
@@ -49,8 +51,16 @@ export default function LoginPage() {
 
   const selectedRole = watch("role");
 
+  // Already signed in (same browser, another tab or returning visit)
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace(`/${user.role}/dashboard`);
+    }
+  }, [authLoading, user, router]);
+
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
+    setLoginError(null);
     try {
       const success = await login(data.email, data.password, data.role as UserRole);
       if (success) {
@@ -60,22 +70,34 @@ export default function LoginPage() {
         });
         router.push(`/${data.role}/dashboard`);
       } else {
+        const message = "Invalid credentials. Please try again.";
+        setLoginError(message);
         toast({
           title: "Login failed",
-          description: "Invalid credentials. Please try again.",
+          description: message,
           variant: "destructive",
         });
       }
     } catch (error) {
+      const description = getApiErrorMessage(error, "An error occurred. Please try again.");
+      setLoginError(description);
       toast({
-        title: "Error",
-        description: "An error occurred. Please try again.",
+        title: "Login failed",
+        description,
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (authLoading || user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4">
@@ -147,6 +169,12 @@ export default function LoginPage() {
             <Button type="submit" variant="gradient" className="w-full" disabled={isLoading}>
               {isLoading ? "Logging in..." : "Login"}
             </Button>
+
+            {loginError && (
+              <p className="text-sm text-destructive text-center" role="alert">
+                {loginError}
+              </p>
+            )}
 
             <div className="text-center">
               <button

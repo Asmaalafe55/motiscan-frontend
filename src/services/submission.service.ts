@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 
 export interface Submission {
   id: string;
@@ -25,12 +25,19 @@ export const submissionService = {
   getActiveSubmissionId: () => activeSubmissionId,
 
   startSubmission: async (examId: string, totalExercises = 0): Promise<Submission> => {
-    const data = await api.post<{ submission: Submission }>(
-      `/api/submissions/${examId}`,
-      { totalExercises }
-    );
-    activeSubmissionId = data.submission.id;
-    return data.submission;
+    try {
+      const data = await api.post<{ submission: Submission }>(
+        `/api/submissions/${examId}`,
+        { totalExercises }
+      );
+      activeSubmissionId = data.submission.id;
+      return data.submission;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        throw new Error("Exam already submitted");
+      }
+      throw err;
+    }
   },
 
   saveEvent: async (

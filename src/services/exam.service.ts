@@ -1,12 +1,12 @@
-import { Exam, ExamSubmission, Answer } from "@/types";
-import { api } from "@/lib/api";
+import { Exam, ExamSubmission, Answer, StudentExamSession } from "@/types";
+import { api, ApiError } from "@/lib/api";
 import {
   ApiExam,
   ApiExamExercise,
   buildExam,
 } from "@/lib/examMapper";
 import { exerciseLibraryService } from "./exerciseLibrary.service";
-import { getSocket } from "@/lib/socket";
+import { connectSocket, getSocket } from "@/lib/socket";
 
 interface ExamsListResponse {
   exams: ApiExam[];
@@ -20,6 +20,23 @@ interface ExamDetailResponse {
 
 interface SubmissionsResponse {
   submissions: ExamSubmission[];
+}
+
+interface ExamSessionsResponse {
+  sessions: StudentExamSession[];
+}
+
+async function ensureSocketConnected(): Promise<void> {
+  const socket = connectSocket();
+  if (socket.connected) return;
+  await new Promise<void>((resolve) => {
+    if (socket.connected) {
+      resolve();
+      return;
+    }
+    socket.once("connect", () => resolve());
+    socket.connect();
+  });
 }
 
 async function loadFullExam(
@@ -41,6 +58,7 @@ function summaryExam(exam: ApiExam): Exam {
     teacherId: exam.teacherId,
     createdAt: exam.createdAt,
     isLive: exam.isLive,
+    hasSubmitted: exam.hasSubmitted ?? false,
     duration: exam.duration ?? undefined,
     exerciseIds: [],
     assignedStudentIds: [],
@@ -88,6 +106,16 @@ export const examService = {
     try {
       const data = await api.get<ExamDetailResponse>(`/api/student/exams/${examId}`);
       return loadFullExam(data.exam, data.exercises);
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      return null;
+    }
+  },
+
+  getSubmittedExamForStudent: async (examId: string): Promise<Exam | null> => {
+    try {
+      const data = await api.get<ExamDetailResponse>(`/api/student/exams/${examId}/submitted`);
+      return loadFullExam(data.exam, data.exercises);
     } catch {
       return null;
     }
@@ -108,6 +136,15 @@ export const examService = {
     });
 
     return loadFullExam(data.exam, data.exercises, data.assignedStudentIds ?? []);
+  },
+
+  getExamSessions: async (examId: string): Promise<StudentExamSession[]> => {
+    try {
+      const data = await api.get<ExamSessionsResponse>(`/api/exams/${examId}/sessions`);
+      return data.sessions;
+    } catch {
+      return [];
+    }
   },
 
   updateExam: async (examId: string, updates: Partial<Exam>): Promise<Exam | null> => {
@@ -145,6 +182,7 @@ export const examService = {
   },
 
   openLiveSession: async (examId: string): Promise<Exam | null> => {
+    await ensureSocketConnected();
     const updated = await examService.updateExam(examId, { isLive: true });
     if (updated) {
       getSocket().emit("teacher:openSession", { examId });
@@ -154,7 +192,9 @@ export const examService = {
 
   closeLiveSession: async (examId: string): Promise<Exam | null> => {
     getSocket().emit("teacher:closeSession", { examId });
-    return examService.updateExam(examId, { isLive: false });
+    const current = await examService.getExamById(examId);
+    if (!current) return null;
+    return examService.updateExam(examId, { ...current, isLive: false });
   },
 
   submitExam: async (

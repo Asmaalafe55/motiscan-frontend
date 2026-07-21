@@ -1,5 +1,5 @@
 import { User, UserRole } from "@/types";
-import { api, setToken } from "@/lib/api";
+import { api, ApiError, setToken } from "@/lib/api";
 
 interface AuthResponse {
   token: string;
@@ -16,7 +16,8 @@ export const authService = {
       const data = await api.post<AuthResponse>("/api/auth/login", { email, password, role });
       setToken(data.token);
       return data.user;
-    } catch {
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
       return null;
     }
   },
@@ -32,5 +33,22 @@ export const authService = {
 
   logout: async (): Promise<void> => {
     setToken(null);
+  },
+
+  requestPasswordReset: async (email: string): Promise<string> => {
+    const data = await api.post<{ message: string }>(
+      "/api/auth/forgot-password",
+      { email: email.trim() },
+      { timeoutMs: 25000 }
+    );
+    return data.message;
+  },
+
+  resetPassword: async (token: string, newPassword: string): Promise<void> => {
+    await api.post<{ message: string }>(
+      "/api/auth/reset-password",
+      { token, newPassword },
+      { timeoutMs: 25000 }
+    );
   },
 };

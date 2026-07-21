@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { examService } from "@/services/exam.service";
+import { ApiError } from "@/lib/api";
 import { liveSessionService } from "@/services/liveSession.service";
 import { submissionService } from "@/services/submission.service";
 import { trackingService } from "@/services/tracking.service";
@@ -121,6 +122,16 @@ export default function TakeExamPage() {
           router.push("/student/dashboard");
           return;
         }
+
+        if (data.hasSubmitted) {
+          toast({
+            title: "Already submitted",
+            description: "You have already completed this exam.",
+          });
+          router.push("/student/dashboard");
+          return;
+        }
+
         setExam(data);
         const started = new Date();
         setStartTime(started);
@@ -136,7 +147,23 @@ export default function TakeExamPage() {
             );
             submissionIdRef.current = submission.id;
           } catch (err) {
+            const message = err instanceof Error ? err.message : "";
+            if (message.includes("already submitted")) {
+              toast({
+                title: "Already submitted",
+                description: "You have already completed this exam.",
+              });
+              router.push("/student/dashboard");
+              return;
+            }
             console.error("Failed to start submission:", err);
+            toast({
+              title: "Could not start exam",
+              description: "Please try again from your dashboard.",
+              variant: "destructive",
+            });
+            router.push("/student/dashboard");
+            return;
           }
         }
 
@@ -147,7 +174,6 @@ export default function TakeExamPage() {
           setAutoSubmitted(true);
         }, FIVE_HOURS);
 
-        // Show 30-minute warning at 4h30m
         const warningTimeout = setTimeout(() => {
           setShow30MinWarning(true);
         }, FIVE_HOURS - THIRTY_MIN);
@@ -157,7 +183,21 @@ export default function TakeExamPage() {
           clearTimeout(warningTimeout);
         };
       } catch (error) {
+        if (error instanceof ApiError && error.status === 409) {
+          toast({
+            title: "Already submitted",
+            description: "You have already completed this exam.",
+          });
+          router.push("/student/dashboard");
+          return;
+        }
         console.error("Error fetching exam:", error);
+        toast({
+          title: "Exam not available",
+          description: "This exam could not be loaded.",
+          variant: "destructive",
+        });
+        router.push("/student/dashboard");
       }
     };
 
@@ -283,6 +323,7 @@ export default function TakeExamPage() {
     if (!exam) return;
     await handleLeaveExercise(currentIndex);
     setCurrentIndex(nextIndex);
+    liveSessionService.notifyExerciseChange(nextIndex);
     await handleEnterExercise(nextIndex);
   };
 
