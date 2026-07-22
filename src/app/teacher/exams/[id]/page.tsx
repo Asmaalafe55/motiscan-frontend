@@ -12,7 +12,6 @@ import { liveSessionService } from "@/services/liveSession.service";
 import { studentService } from "@/services/student.service";
 import { useExamSession } from "@/hooks/useExamSession";
 import { ExercisePreviewModal } from "@/components/exercises/ExercisePreviewModal";
-import { exerciseLibraryService } from "@/services/exerciseLibrary.service";
 import type { Exam, Exercise, ExamSubmission, User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useLiveSession } from "@/contexts/LiveSessionContext";
@@ -98,26 +97,37 @@ export default function ExamDetailPage() {
         const data = await examService.getExamById(examId);
         setExam(data);
 
-        // Load assigned students
-        if (data?.assignedStudentIds?.length) {
-          const students = await studentService.getStudentsByIds(data.assignedStudentIds);
-          setAssignedStudents(students);
-        }
-
-        // Load library exercises for preview (if exerciseIds exist)
-        if (data?.exerciseIds?.length) {
-          const exs = await exerciseLibraryService.getExercisesByIds(data.exerciseIds);
+        if (data?.questions?.length) {
           const map: Record<string, Exercise> = {};
-          exs.forEach((e) => { map[e.id] = e; });
+          data.questions.forEach((q, idx) => {
+            const id = data.exerciseIds?.[idx] ?? q.id;
+            map[id] = {
+              id,
+              title: q.text || `Exercise ${idx + 1}`,
+              type: q.type,
+              instructions: q.text,
+              content: "",
+              tags: [],
+              createdAt: data.createdAt,
+              question: q,
+            };
+          });
           setLibraryExercises(map);
         }
 
-        // Load submissions so we know which students have submitted
-        const subs = await examService.getSubmissionsForExam(examId);
+        // Show exam UI immediately; load roster + submissions in parallel after.
+        setIsLoading(false);
+
+        const [students, subs] = await Promise.all([
+          data?.assignedStudentIds?.length
+            ? studentService.getStudentsByIds(data.assignedStudentIds)
+            : Promise.resolve([] as User[]),
+          examService.getSubmissionsForExam(examId),
+        ]);
+        setAssignedStudents(students);
         setSubmissions(subs);
       } catch (err) {
         console.error(err);
-      } finally {
         setIsLoading(false);
       }
     };

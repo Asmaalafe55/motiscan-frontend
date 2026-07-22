@@ -4,6 +4,7 @@ import {
   ApiExam,
   ApiExamExercise,
   buildExam,
+  mapApiExercise,
 } from "@/lib/examMapper";
 import { exerciseLibraryService } from "./exerciseLibrary.service";
 import { connectSocket, getSocket } from "@/lib/socket";
@@ -44,8 +45,18 @@ async function loadFullExam(
   exerciseLinks: ApiExamExercise[],
   assignedStudentIds: string[] = []
 ): Promise<Exam> {
-  const ids = exerciseLinks.map((l) => l.exerciseId);
-  const exercises = await exerciseLibraryService.getExercisesByIds(ids);
+  const embedded = exerciseLinks
+    .filter((l) => l.exercise)
+    .map((l) => mapApiExercise(l.exercise!));
+
+  // Prefer one-shot embedded payloads; fall back to per-id fetches for older responses.
+  const exercises =
+    embedded.length === exerciseLinks.length && exerciseLinks.length > 0
+      ? embedded
+      : await exerciseLibraryService.getExercisesByIds(
+          exerciseLinks.map((l) => l.exerciseId)
+        );
+
   return buildExam(exam, exerciseLinks, exercises, assignedStudentIds);
 }
 

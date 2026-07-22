@@ -19,6 +19,17 @@ export interface ApiExamExercise {
   exerciseId: string;
   order: number;
   required?: boolean;
+  /** Present when exam detail endpoints embed full exercise bodies */
+  exercise?: {
+    id: string;
+    type: Exercise["type"];
+    title: string;
+    instructions: string;
+    content?: string | null;
+    tags?: string[];
+    question?: Partial<Question>;
+    createdAt: string;
+  };
 }
 
 export function mapApiExercise(row: {

@@ -37,6 +37,9 @@ import { PrioritySortExercise } from "@/components/exercises/PrioritySortExercis
 import { ShapeCopyExercise } from "@/components/exercises/ShapeCopyExercise";
 import { AnalyticalPerceptionExercise } from "@/components/exercises/AnalyticalPerceptionExercise";
 import { Send } from "lucide-react";
+import { connectSocket } from "@/lib/socket";
+
+const SESSION_END_AUTO_EXIT_MS = 60_000;
 
 type AnswersForm = { answers: Record<string, string | number> };
 
@@ -55,7 +58,7 @@ export default function TakeExamPage() {
   const params = useParams();
   const router = useRouter();
   const examId = params.id as string;
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [exam, setExam] = useState<Exam | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -65,6 +68,8 @@ export default function TakeExamPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [autoSubmitted, setAutoSubmitted] = useState(false);
   const [show30MinWarning, setShow30MinWarning] = useState(false);
+  const [sessionEndedByTeacher, setSessionEndedByTeacher] = useState(false);
+  const [sessionEndSecondsLeft, setSessionEndSecondsLeft] = useState(60);
   // Per-exercise tracking for the DIFFERENCES type (character count, edits, etc.)
   const [differencesTracking, setDifferencesTracking] = useState<
     Record<string, DifferencesTracking>
@@ -82,6 +87,8 @@ export default function TakeExamPage() {
     Record<string, AnalyticalPerceptionTracking>
   >({});
   const submissionIdRef = useRef<string | null>(null);
+  const examLoadStartedRef = useRef(false);
+  const sessionEndedHandledRef = useRef(false);
 
   const saveTracking = async (
     eventType: string,
@@ -110,6 +117,11 @@ export default function TakeExamPage() {
   const currentExercise = exercises[currentIndex];
 
   useEffect(() => {
+    if (authLoading || !user || examLoadStartedRef.current) return;
+    examLoadStartedRef.current = true;
+
+    let clearTimers: (() => void) | undefined;
+
     const fetchExam = async () => {
       try {
         const data = await examService.getExamForStudent(examId);
@@ -136,35 +148,39 @@ export default function TakeExamPage() {
         const started = new Date();
         setStartTime(started);
 
-        if (user) {
-          liveSessionService.joinSession(examId, user.id, user.name);
-          await liveSessionService.addStudentToSession(examId, user.id);
-          await trackingService.startStudentSession(examId, user.id, data.questions.length, started);
-          try {
-            const submission = await submissionService.startSubmission(
-              examId,
-              data.questions.length
-            );
-            submissionIdRef.current = submission.id;
-          } catch (err) {
-            const message = err instanceof Error ? err.message : "";
-            if (message.includes("already submitted")) {
-              toast({
-                title: "Already submitted",
-                description: "You have already completed this exam.",
-              });
-              router.push("/student/dashboard");
-              return;
-            }
-            console.error("Failed to start submission:", err);
+        liveSessionService.joinSession(examId, user.id, user.name);
+        void liveSessionService.addStudentToSession(examId, user.id);
+        void trackingService.startStudentSession(
+          examId,
+          user.id,
+          data.questions.length,
+          started
+        );
+
+        try {
+          const submission = await submissionService.startSubmission(
+            examId,
+            data.questions.length
+          );
+          submissionIdRef.current = submission.id;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "";
+          if (message.includes("already submitted")) {
             toast({
-              title: "Could not start exam",
-              description: "Please try again from your dashboard.",
-              variant: "destructive",
+              title: "Already submitted",
+              description: "You have already completed this exam.",
             });
             router.push("/student/dashboard");
             return;
           }
+          console.error("Failed to start submission:", err);
+          toast({
+            title: "Could not start exam",
+            description: "Please try again from your dashboard.",
+            variant: "destructive",
+          });
+          router.push("/student/dashboard");
+          return;
         }
 
         const FIVE_HOURS = 5 * 60 * 60 * 1000;
@@ -178,7 +194,7 @@ export default function TakeExamPage() {
           setShow30MinWarning(true);
         }, FIVE_HOURS - THIRTY_MIN);
 
-        return () => {
+        clearTimers = () => {
           clearTimeout(autoSubmitTimeout);
           clearTimeout(warningTimeout);
         };
@@ -201,11 +217,14 @@ export default function TakeExamPage() {
       }
     };
 
-    fetchExam();
-  }, [examId, user, router, toast]);
+    void fetchExam();
+    return () => {
+      clearTimers?.();
+    };
+  }, [examId, user, authLoading, router, toast]);
 
   useEffect(() => {
-    if (autoSubmitted && exam) {
+    if (autoSubmitted && exam && !sessionEndedHandledRef.current) {
       toast({
         title: "Session ended",
         description: "Your exam session reached the maximum duration and was submitted.",
@@ -330,17 +349,13 @@ export default function TakeExamPage() {
   const handleAutoSubmit = async () => {
     if (!exam || !user || !startTime) return;
 
-    const formValues = watch("answers");
-    const answers: Answer[] = exercises.map((q) => {
-      const value = formValues[q.id];
-      return {
-        questionId: q.id,
-        value: value || (q.type === "rating_scale" ? 5 : ""),
-      };
-    });
-
+    const answers = collectCurrentAnswers();
     const timeSpent = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
-    await submitExam(answers, timeSpent);
+    try {
+      await submitExam(answers, timeSpent);
+    } catch {
+      // Error toast already shown by submitExam
+    }
   };
 
   const buildAttempts = (): ExerciseAttempt[] => {
@@ -392,7 +407,14 @@ export default function TakeExamPage() {
     });
   };
 
-  const submitExam = async (answers: Answer[], timeSpent: number) => {
+  const submitExam = async (
+    answers: Answer[],
+    timeSpent: number,
+    options?: {
+      redirectTo?: string;
+      silent?: boolean;
+    }
+  ) => {
     if (!exam || !user) return;
 
     setIsSubmitting(true);
@@ -414,25 +436,122 @@ export default function TakeExamPage() {
       await examService.submitExam(examId, user.id, answers, timeSpent);
       await liveSessionService.removeStudentFromSession(examId, user.id);
 
-      toast({
-        title: "Exam submitted",
-        description: "Your answers have been submitted successfully.",
-      });
+      if (!options?.silent) {
+        toast({
+          title: "Exam submitted",
+          description: "Your answers have been submitted successfully.",
+        });
+      }
 
-      router.push("/student/history");
+      router.push(options?.redirectTo ?? "/student/history");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to submit exam. Please try again.",
-        variant: "destructive",
-      });
+      if (!options?.silent) {
+        toast({
+          title: "Error",
+          description: "Failed to submit exam. Please try again.",
+          variant: "destructive",
+        });
+      }
+      throw error;
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const collectCurrentAnswers = (): Answer[] => {
+    const formValues = watch("answers");
+    return exercises.map((q) => {
+      const value = formValues[q.id];
+      return {
+        questionId: q.id,
+        value: value || (q.type === "rating_scale" ? 5 : ""),
+      };
+    });
+  };
+
+  const exitToDashboard = useCallback(() => {
+    router.push("/student/dashboard");
+  }, [router]);
+
+  const handleTeacherSessionEnded = useCallback(async () => {
+    if (sessionEndedHandledRef.current) return;
+    sessionEndedHandledRef.current = true;
+
+    setShowConfirm(false);
+    setSessionEndSecondsLeft(60);
+    setSessionEndedByTeacher(true);
+
+    if (!exam || !user || !startTime) return;
+
+    try {
+      await handleLeaveExercise(currentIndex);
+      const answers = collectCurrentAnswers();
+      const timeSpent = Math.floor((Date.now() - startTime.getTime()) / 1000);
+
+      setIsSubmitting(true);
+      const attempts = buildAttempts();
+      await trackingService.recordExerciseAttempts(attempts);
+      await trackingService.markSubmitted(examId, user.id);
+
+      if (submissionIdRef.current) {
+        await submissionService.saveEvent(submissionIdRef.current, "submit", {
+          answers,
+          timeSpent,
+          attempts,
+          endedByTeacher: true,
+        });
+        await submissionService.finalize(submissionIdRef.current);
+        submissionIdRef.current = null;
+      }
+
+      await examService.submitExam(examId, user.id, answers, timeSpent);
+      await liveSessionService.removeStudentFromSession(examId, user.id);
+    } catch (err) {
+      console.error("Failed to save answers after teacher closed session:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+    // Intentionally omit unstable helpers from deps — run once per session close.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam, user, startTime, examId, currentIndex]);
+
+  useEffect(() => {
+    if (!exam) return;
+
+    const socket = connectSocket();
+    const onSessionClosed = ({ examId: closedExamId }: { examId: string }) => {
+      if (closedExamId !== examId) return;
+      void handleTeacherSessionEnded();
+    };
+
+    socket.on("session:closed", onSessionClosed);
+    return () => {
+      socket.off("session:closed", onSessionClosed);
+    };
+  }, [exam, examId, handleTeacherSessionEnded]);
+
+  useEffect(() => {
+    if (!sessionEndedByTeacher) return;
+
+    setSessionEndSecondsLeft(60);
+
+    const autoExit = setTimeout(() => {
+      exitToDashboard();
+    }, SESSION_END_AUTO_EXIT_MS);
+
+    const tick = setInterval(() => {
+      setSessionEndSecondsLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => {
+      clearTimeout(autoExit);
+      clearInterval(tick);
+    };
+  }, [sessionEndedByTeacher, exitToDashboard]);
+
   const onSubmit = async (data: AnswersForm) => {
     if (!exam || !user || !startTime) return;
+    if (sessionEndedHandledRef.current) return;
 
     const answers: Answer[] = exercises.map((q) => ({
       questionId: q.id,
@@ -440,7 +559,11 @@ export default function TakeExamPage() {
     }));
 
     const timeSpent = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
-    await submitExam(answers, timeSpent);
+    try {
+      await submitExam(answers, timeSpent);
+    } catch {
+      // Error toast already shown by submitExam
+    }
   };
 
   useEffect(() => {
@@ -507,6 +630,7 @@ export default function TakeExamPage() {
   const isLast = currentIndex === totalExercises - 1;
 
   const handleNext = async () => {
+    if (sessionEndedByTeacher || isSubmitting) return;
     if (!isLast) {
       await goToExercise(currentIndex + 1);
     } else {
@@ -515,6 +639,7 @@ export default function TakeExamPage() {
   };
 
   const handlePrevious = async () => {
+    if (sessionEndedByTeacher || isSubmitting) return;
     if (!isFirst) {
       await goToExercise(currentIndex - 1);
     }
@@ -737,7 +862,7 @@ export default function TakeExamPage() {
           </div>
         </div>
 
-        {showConfirm && (
+        {showConfirm && !sessionEndedByTeacher && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="w-full max-w-md rounded-lg bg-background p-6 shadow-lg">
               <h2 className="text-lg font-semibold mb-2">Submit exam?</h2>
@@ -760,6 +885,33 @@ export default function TakeExamPage() {
                   disabled={isSubmitting}
                 >
                   Confirm Submit
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {sessionEndedByTeacher && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
+            <div
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="session-ended-title"
+              aria-describedby="session-ended-desc"
+              className="w-full max-w-md rounded-lg border bg-background p-6 shadow-xl"
+            >
+              <h2 id="session-ended-title" className="text-lg font-semibold mb-2">
+                Exam ended by teacher
+              </h2>
+              <p id="session-ended-desc" className="text-sm text-muted-foreground mb-1">
+                The teacher ended this exam. Your answers have been saved.
+              </p>
+              <p className="text-xs text-muted-foreground mb-5">
+                Returning to your dashboard in {sessionEndSecondsLeft}s…
+              </p>
+              <div className="flex justify-end">
+                <Button type="button" variant="gradient" onClick={exitToDashboard}>
+                  Close
                 </Button>
               </div>
             </div>
