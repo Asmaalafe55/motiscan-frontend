@@ -23,6 +23,7 @@ import {
   Eye,
   FileText,
   ImageIcon,
+  Loader2,
   Pencil,
   Play,
   Square,
@@ -83,9 +84,10 @@ export default function ExamDetailPage() {
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
   const [submissions, setSubmissions] = useState<ExamSubmission[]>([]);
   const [reportLoadingFor, setReportLoadingFor] = useState<string | null>(null);
+  const [sessionActionLoading, setSessionActionLoading] = useState<"open" | "close" | null>(null);
 
   // Live session hook (auto-polls every 10s when isLive)
-  const { connectedStudentIds, sessions, studentNames } = useExamSession(
+  const { connectedStudentIds, sessions, studentNames, liveExerciseIndex } = useExamSession(
     examId,
     !!exam?.isLive
   );
@@ -148,6 +150,7 @@ export default function ExamDetailPage() {
   }, [exam?.isLive, examId, refreshSession, setActiveExamId]);
 
   const handleOpenSession = async () => {
+    setSessionActionLoading("open");
     try {
       await examService.openLiveSession(examId);
       await liveSessionService.startLiveSession(examId);
@@ -155,10 +158,13 @@ export default function ExamDetailPage() {
       toast({ title: "Live session started", description: "Students can now join this exam." });
     } catch {
       toast({ title: "Error", description: "Failed to start session.", variant: "destructive" });
+    } finally {
+      setSessionActionLoading(null);
     }
   };
 
   const handleCloseSession = async () => {
+    setSessionActionLoading("close");
     try {
       await examService.closeLiveSession(examId);
       await liveSessionService.endLiveSession(examId);
@@ -166,6 +172,8 @@ export default function ExamDetailPage() {
       toast({ title: "Session closed", description: "The exam is no longer available to students." });
     } catch {
       toast({ title: "Error", description: "Failed to close session.", variant: "destructive" });
+    } finally {
+      setSessionActionLoading(null);
     }
   };
 
@@ -217,6 +225,12 @@ export default function ExamDetailPage() {
   // ---- For timeline rendering ----
   const getSession = (sid: string) => sessions.find((s) => s.studentId === sid);
 
+  const resolveStudentName = (sid: string) =>
+    assignedStudents.find((s) => s.id === sid)?.name ??
+    studentNames[sid] ??
+    getSession(sid)?.studentName ??
+    sid;
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -266,14 +280,30 @@ export default function ExamDetailPage() {
               Export Report
             </Button>
             {exam.isLive ? (
-              <Button onClick={handleCloseSession} variant="destructive">
-                <Square className="h-4 w-4 mr-2" />
-                Close Session
+              <Button
+                onClick={handleCloseSession}
+                variant="destructive"
+                disabled={sessionActionLoading !== null}
+              >
+                {sessionActionLoading === "close" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Square className="h-4 w-4 mr-2" />
+                )}
+                {sessionActionLoading === "close" ? "Closing…" : "Close Session"}
               </Button>
             ) : (
-              <Button onClick={handleOpenSession} variant="gradient">
-                <Play className="h-4 w-4 mr-2" />
-                Open Live Session
+              <Button
+                onClick={handleOpenSession}
+                variant="gradient"
+                disabled={sessionActionLoading !== null}
+              >
+                {sessionActionLoading === "open" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4 mr-2" />
+                )}
+                {sessionActionLoading === "open" ? "Opening…" : "Open Live Session"}
               </Button>
             )}
           </div>
@@ -378,7 +408,7 @@ export default function ExamDetailPage() {
                 {exam.isLive && (
                   <CardDescription className="flex items-center gap-1 text-xs">
                     <Clock className="h-3 w-3" />
-                    Auto-refreshes every 10 seconds
+                    Auto-refreshes every 30 seconds
                   </CardDescription>
                 )}
               </CardHeader>
@@ -393,8 +423,14 @@ export default function ExamDetailPage() {
                   <div className="space-y-3">
                     {activeStudentIds.map((sid) => {
                       const session = getSession(sid);
-                      const user = studentNames[sid];
-                      const name = user?.name ?? sid;
+                      const name = resolveStudentName(sid);
+                      const exerciseIndex =
+                        session?.currentExerciseIndex ?? liveExerciseIndex[sid];
+                      const totalExercises = session?.totalExercises ?? exam.questions.length;
+                      const progressLabel =
+                        typeof exerciseIndex === "number"
+                          ? `Exercise ${exerciseIndex + 1} of ${totalExercises}`
+                          : "Online — in exam";
 
                       const statusLabel =
                         session?.status === "submitted" ? "Submitted" :
@@ -423,9 +459,7 @@ export default function ExamDetailPage() {
                               <div>
                                 <p className="text-sm font-medium">{name}</p>
                                 <p className="text-[11px] text-muted-foreground">
-                                  {session
-                                    ? `Exercise ${session.currentExerciseIndex + 1} of ${session.totalExercises}`
-                                    : "Connecting…"}
+                                  {progressLabel}
                                 </p>
                               </div>
                             </div>
@@ -469,7 +503,11 @@ export default function ExamDetailPage() {
                                 disabled={reportLoadingFor === sid}
                                 onClick={() => handleGetReport(sid)}
                               >
-                                <BarChart2 className="h-3.5 w-3.5 mr-1.5" />
+                                {reportLoadingFor === sid ? (
+                                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                ) : (
+                                  <BarChart2 className="h-3.5 w-3.5 mr-1.5" />
+                                )}
                                 {reportLoadingFor === sid ? "Opening…" : "View AI Report"}
                               </Button>
                             </div>
@@ -516,7 +554,11 @@ export default function ExamDetailPage() {
                           disabled={reportLoadingFor === sub.studentId}
                           onClick={() => handleGetReport(sub.studentId)}
                         >
-                          <BarChart2 className="h-3.5 w-3.5 mr-1.5" />
+                          {reportLoadingFor === sub.studentId ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          ) : (
+                            <BarChart2 className="h-3.5 w-3.5 mr-1.5" />
+                          )}
                           {reportLoadingFor === sub.studentId ? "Opening…" : "View AI Report"}
                         </Button>
                       </div>
@@ -565,7 +607,11 @@ export default function ExamDetailPage() {
                               disabled={reportLoadingFor === student.id}
                               onClick={() => handleGetReport(student.id)}
                             >
-                              <BarChart2 className="h-3 w-3 mr-1" />
+                              {reportLoadingFor === student.id ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <BarChart2 className="h-3 w-3 mr-1" />
+                              )}
                               {reportLoadingFor === student.id ? "Opening…" : "View AI Report"}
                             </Button>
                           )}

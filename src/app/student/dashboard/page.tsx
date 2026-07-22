@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { examService } from "@/services/exam.service";
 import type { Exam } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { BookOpen, CheckCircle2, FileText, User } from "lucide-react";
+import { BookOpen, CheckCircle2, FileText, Loader2, User } from "lucide-react";
 
 export default function StudentDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const [liveExams, setLiveExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [enteringExamId, setEnteringExamId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -125,10 +126,18 @@ export default function StudentDashboard() {
                     <Button
                       variant="gradient"
                       className="w-full"
-                      onClick={() => router.push(`/student/exam/${exam.id}`)}
+                      disabled={enteringExamId === exam.id}
+                      onClick={() => {
+                        setEnteringExamId(exam.id);
+                        router.push(`/student/exam/${exam.id}`);
+                      }}
                     >
-                      <BookOpen className="h-4 w-4 mr-2" />
-                      Enter Exam
+                      {enteringExamId === exam.id ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <BookOpen className="h-4 w-4 mr-2" />
+                      )}
+                      {enteringExamId === exam.id ? "Opening…" : "Enter Exam"}
                     </Button>
                   )}
                 </CardContent>
