@@ -20,6 +20,13 @@ function getExamStatus(exam: Exam): ExamStatus {
   return "upcoming";
 }
 
+// Lower number = higher priority. LIVE exams always float to the top.
+const STATUS_PRIORITY: Record<ExamStatus, number> = {
+  live: 0,
+  upcoming: 1,
+  submitted: 2,
+};
+
 const FILTERS: { value: ExamFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "live", label: "Live" },
@@ -66,13 +73,17 @@ export default function StudentDashboard() {
     return base;
   }, [exams]);
 
-  const filteredExams = useMemo(
-    () =>
+  const filteredExams = useMemo(() => {
+    const list =
       activeFilter === "all"
         ? exams
-        : exams.filter((e) => getExamStatus(e) === activeFilter),
-    [exams, activeFilter]
-  );
+        : exams.filter((e) => getExamStatus(e) === activeFilter);
+
+    // Prioritize LIVE exams at the top; keep original order within a status.
+    return [...list].sort(
+      (a, b) => STATUS_PRIORITY[getExamStatus(a)] - STATUS_PRIORITY[getExamStatus(b)]
+    );
+  }, [exams, activeFilter]);
 
   if (isLoading) {
     return (
