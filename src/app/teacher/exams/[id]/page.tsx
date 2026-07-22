@@ -87,7 +87,7 @@ export default function ExamDetailPage() {
   const [sessionActionLoading, setSessionActionLoading] = useState<"open" | "close" | null>(null);
 
   // Live session hook (auto-polls every 10s when isLive)
-  const { connectedStudentIds, sessions, studentNames } = useExamSession(
+  const { connectedStudentIds, sessions, studentNames, liveExerciseIndex } = useExamSession(
     examId,
     !!exam?.isLive
   );
@@ -408,7 +408,7 @@ export default function ExamDetailPage() {
                 {exam.isLive && (
                   <CardDescription className="flex items-center gap-1 text-xs">
                     <Clock className="h-3 w-3" />
-                    Auto-refreshes every 10 seconds
+                    Auto-refreshes every 30 seconds
                   </CardDescription>
                 )}
               </CardHeader>
@@ -424,6 +424,13 @@ export default function ExamDetailPage() {
                     {activeStudentIds.map((sid) => {
                       const session = getSession(sid);
                       const name = resolveStudentName(sid);
+                      const exerciseIndex =
+                        session?.currentExerciseIndex ?? liveExerciseIndex[sid];
+                      const totalExercises = session?.totalExercises ?? exam.questions.length;
+                      const progressLabel =
+                        typeof exerciseIndex === "number"
+                          ? `Exercise ${exerciseIndex + 1} of ${totalExercises}`
+                          : "Online — in exam";
 
                       const statusLabel =
                         session?.status === "submitted" ? "Submitted" :
@@ -452,9 +459,7 @@ export default function ExamDetailPage() {
                               <div>
                                 <p className="text-sm font-medium">{name}</p>
                                 <p className="text-[11px] text-muted-foreground">
-                                  {session
-                                    ? `Exercise ${session.currentExerciseIndex + 1} of ${session.totalExercises}`
-                                    : "Connecting…"}
+                                  {progressLabel}
                                 </p>
                               </div>
                             </div>

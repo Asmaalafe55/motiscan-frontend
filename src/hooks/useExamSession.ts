@@ -18,16 +18,21 @@ interface SocketStudentPayload {
   examId?: string;
   studentId: string;
   studentName?: string;
+  exerciseIndex?: number;
 }
 
 export function useExamSession(
   examId: string,
   isLive: boolean,
-  intervalMs = 10_000
-): ExamSessionData & { refresh: () => void } {
+  intervalMs = 30_000
+): ExamSessionData & {
+  refresh: () => void;
+  liveExerciseIndex: Record<string, number>;
+} {
   const [connectedStudentIds, setConnectedStudentIds] = useState<string[]>([]);
   const [sessions, setSessions] = useState<StudentExamSession[]>([]);
   const [studentNames, setStudentNames] = useState<Record<string, string>>({});
+  const [liveExerciseIndex, setLiveExerciseIndex] = useState<Record<string, number>>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const rememberName = useCallback((studentId: string, name?: string | null) => {
@@ -63,6 +68,7 @@ export function useExamSession(
       setConnectedStudentIds([]);
       setSessions([]);
       setStudentNames({});
+      setLiveExerciseIndex({});
       return;
     }
 
@@ -149,6 +155,12 @@ export function useExamSession(
     const onProgress = (payload: SocketStudentPayload) => {
       if (!matchesExam(payload)) return;
       rememberName(payload.studentId, payload.studentName);
+      if (typeof payload.exerciseIndex === "number") {
+        setLiveExerciseIndex((prev) => ({
+          ...prev,
+          [payload.studentId]: payload.exerciseIndex as number,
+        }));
+      }
       refresh();
     };
 
@@ -177,6 +189,7 @@ export function useExamSession(
     connectedStudentIds,
     sessions,
     studentNames,
+    liveExerciseIndex,
     isRefreshing,
     refresh,
   };
