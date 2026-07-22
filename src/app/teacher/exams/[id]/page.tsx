@@ -329,7 +329,7 @@ export default function ExamDetailPage() {
           <div className="flex items-center gap-3 flex-shrink-0">
             <Button
               variant="gradient"
-              onClick={() => router.push(`/teacher/exams/${examId}/edit`)}
+              onClick={() => router.push(`/teacher/exams/${examId}/edit?from=details`)}
             >
               <Pencil className="h-4 w-4 mr-2" />
               Edit Exam

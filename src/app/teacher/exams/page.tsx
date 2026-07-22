@@ -104,7 +104,7 @@ export default function TeacherExamsPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => router.push(`/teacher/exams/${exam.id}/edit`)}
+                    onClick={() => router.push(`/teacher/exams/${exam.id}/edit?from=list`)}
                     title="Edit exam"
                   >
                     <Pencil className="h-4 w-4" />
