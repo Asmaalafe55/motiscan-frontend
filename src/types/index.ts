@@ -329,6 +329,8 @@ export interface ExerciseNavigationEvent {
 export interface StudentExamSession {
   examId: string;
   studentId: string;
+  studentName?: string | null;
+  studentEmail?: string | null;
   startedAt: string;
   lastActivityAt: string;
   status: StudentStatus;
