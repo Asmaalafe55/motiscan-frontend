@@ -87,10 +87,10 @@ function RowSection({
         {rowNumber}
       </div>
 
-      {/* 3-column grid */}
-      <div className="flex-1 grid grid-cols-3 gap-4">
+      {/* 3-column grid — boards are capped at 280×280 via ShapeCanvas */}
+      <div className="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {/* MODEL */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col items-center gap-2">
           <span className="text-xs font-semibold text-center text-muted-foreground uppercase tracking-wide">
             Model
           </span>
@@ -106,11 +106,11 @@ function RowSection({
         </div>
 
         {/* FIGURE A */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col items-center gap-2">
           <span className="text-xs font-semibold text-center text-blue-600 uppercase tracking-wide">
             Figure A
           </span>
-          <div onClick={() => onFigureActivate(keyA)}>
+          <div className="w-full" onClick={() => onFigureActivate(keyA)}>
             <ShapeCanvas
               ref={figureARef}
               readOnly={false}
@@ -125,11 +125,11 @@ function RowSection({
         </div>
 
         {/* FIGURE B */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col items-center gap-2">
           <span className="text-xs font-semibold text-center text-blue-600 uppercase tracking-wide">
             Figure B
           </span>
-          <div onClick={() => onFigureActivate(keyB)}>
+          <div className="w-full" onClick={() => onFigureActivate(keyB)}>
             <ShapeCanvas
               ref={figureBRef}
               readOnly={false}

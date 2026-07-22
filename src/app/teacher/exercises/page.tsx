@@ -24,7 +24,7 @@ import { TypeSelectorModal } from "@/components/exercises/TypeSelectorModal";
 import type { ExerciseTypeKey } from "@/components/exercises/exerciseTypeCatalog";
 import type { Exercise } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { getExercisePreviewSrc, resolveMediaUrl } from "@/lib/mediaUrl";
 import {
   BookOpen,
   Copy,
@@ -326,7 +326,7 @@ export default function ExerciseLibraryPage() {
                           src={resolveMediaUrl(src)}
                           alt={`Image ${i + 1}`}
                           className="w-full rounded border border-border object-contain bg-muted"
-                          style={{ aspectRatio: "4/3", maxHeight: 80 }}
+                          style={{ aspectRatio: "1/1", maxHeight: 96 }}
                           draggable={false}
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.opacity = "0.35";
@@ -336,19 +336,26 @@ export default function ExerciseLibraryPage() {
                     </div>
                   )}
 
-                  {/* Thumbnail for shape_copy type — show first row model */}
-                  {ex.type === "shape_copy" && ex.question.shapeCopyConfig?.rows?.[0]?.model_snapshot && (
-                    <div className="p-2.5 pb-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={resolveMediaUrl(ex.question.shapeCopyConfig.rows[0].model_snapshot)}
-                        alt="Model shape"
-                        className="w-full rounded border border-border object-contain bg-[#f8f8f8]"
-                        style={{ aspectRatio: "4/3", maxHeight: 80 }}
-                        draggable={false}
-                      />
-                    </div>
-                  )}
+                  {/* Thumbnail for shape_copy — first model image (library preview) */}
+                  {ex.type === "shape_copy" && (() => {
+                    const previewSrc = getExercisePreviewSrc(ex);
+                    return previewSrc ? (
+                      <div className="p-2.5 pb-0 flex justify-center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={previewSrc}
+                          alt="Model shape preview"
+                          className="w-full max-w-[140px] rounded border border-border object-contain bg-[#f8f8f8]"
+                          style={{ aspectRatio: "1/1", maxHeight: 120 }}
+                          draggable={false}
+                        />
+                      </div>
+                    ) : (
+                      <div className="mx-2.5 mt-2.5 flex h-20 items-center justify-center rounded border border-dashed border-border bg-muted/40 text-xs text-muted-foreground">
+                        No model preview
+                      </div>
+                    );
+                  })()}
 
                   {/* Thumbnail for analytical_perception — first two cell designs as <img> tags.
                       Using a data-URI avoids the "viewBox-only SVG collapses to 0px" issue

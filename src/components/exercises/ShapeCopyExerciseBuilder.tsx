@@ -17,6 +17,7 @@ import type { ToolType } from "./canvas/ShapeCanvas";
 import { ShapeCopyExercise } from "./ShapeCopyExercise";
 import { Eye, Loader2, Plus, Trash2 } from "lucide-react";
 import type { Exercise, ShapeCopyRow, ShapeCopyRule, ShapeCopyConfig } from "@/types";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -143,7 +144,12 @@ export function ShapeCopyExerciseBuilder({
   const captureSnapshots = useCallback((): string[] => {
     return rows.map((_, i) => {
       const canvas = modelRefs.current[i]?.current;
-      return canvas?.getSnapshot() ?? rows[i].modelSnapshot;
+      if (!canvas) return rows[i].modelSnapshot;
+      // Empty canvas still returns a blank PNG data-URL — keep the saved model instead.
+      if (canvas.getShapesData().length === 0) {
+        return rows[i].modelSnapshot || "";
+      }
+      return canvas.getSnapshot();
     });
   }, [rows]);
 
@@ -212,6 +218,12 @@ export function ShapeCopyExerciseBuilder({
     const errs: string[] = [];
     if (!title.trim() || title.trim().length < 3) errs.push("Title must be at least 3 characters.");
     if (!instructions.trim() || instructions.trim().length < 10) errs.push("Instructions must be at least 10 characters.");
+    const snapshots = captureSnapshots();
+    snapshots.forEach((snap, i) => {
+      if (!snap) {
+        errs.push(`Row ${i + 1}: draw a model shape (this image is used as the library preview).`);
+      }
+    });
     return errs;
   };
 
@@ -369,7 +381,7 @@ export function ShapeCopyExerciseBuilder({
                 <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={row.modelSnapshot}
+                    src={resolveMediaUrl(row.modelSnapshot)}
                     alt="Current model shape"
                     className="h-16 w-16 flex-shrink-0 rounded border border-amber-200 bg-white object-contain"
                     draggable={false}
