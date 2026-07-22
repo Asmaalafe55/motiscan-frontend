@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { exerciseLibraryService } from "@/services/exerciseLibrary.service";
 import { examService } from "@/services/exam.service";
 import { studentService } from "@/services/student.service";
@@ -79,6 +80,7 @@ export default function EditExamPage() {
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLive, setIsLive] = useState(false);
+  const [initialIsLive, setInitialIsLive] = useState(false);
 
   const {
     register,
@@ -106,6 +108,7 @@ export default function EditExamPage() {
         }
 
         setIsLive(exam.isLive);
+        setInitialIsLive(exam.isLive);
         setLibraryExercises(exs);
         setAllStudents(students);
         reset({ title: exam.title, description: exam.description ?? "" });
@@ -203,7 +206,26 @@ export default function EditExamPage() {
 
       if (!updated) throw new Error("Update failed");
 
-      toast({ title: "Exam updated", description: "Changes saved successfully." });
+      // Open/close the live session (and notify students via socket) only when
+      // the teacher flipped the toggle while editing.
+      if (isLive !== initialIsLive) {
+        if (isLive) {
+          await examService.openLiveSession(examId);
+        } else {
+          await examService.closeLiveSession(examId);
+        }
+        setInitialIsLive(isLive);
+      }
+
+      toast({
+        title: "Exam updated",
+        description:
+          isLive !== initialIsLive
+            ? isLive
+              ? "Changes saved. The exam is now live and visible to students."
+              : "Changes saved. The exam is now a draft and hidden from students."
+            : "Changes saved successfully.",
+      });
       router.push(`/teacher/exams/${examId}`);
     } catch {
       toast({
@@ -229,21 +251,26 @@ export default function EditExamPage() {
   return (
     <Layout role="teacher">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div>
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
             <h1 className="text-2xl font-bold">Edit Exam</h1>
-            {isLive && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                Live
-              </span>
-            )}
+            <p className="text-sm text-muted-foreground mt-1">
+              {isLive
+                ? "This exam is live and visible to students. Toggle off to return it to a draft."
+                : "Toggle on to make this exam live and visible to students, then save your changes."}
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {isLive
-              ? "This exam is live. Changes save immediately and are reflected for students."
-              : "Update exercises and assigned students before opening a live session"}
-          </p>
+          <div
+            className="flex items-center gap-2 rounded-lg border px-3 py-2 shrink-0"
+            title={isLive ? "Set exam to draft" : "Set exam live"}
+          >
+            <Switch
+              checked={isLive}
+              onCheckedChange={setIsLive}
+              onLabel="Live"
+              offLabel="Off"
+            />
+          </div>
         </div>
 
         <Card>

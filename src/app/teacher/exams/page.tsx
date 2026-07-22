@@ -5,21 +5,17 @@ import { useRouter } from "next/navigation";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { examService } from "@/services/exam.service";
 import { Exam } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
 import { Plus, FileText, Clock, Pencil } from "lucide-react";
 import { format } from "date-fns";
 
 export default function TeacherExamsPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { toast } = useToast();
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchExams = async () => {
@@ -36,35 +32,6 @@ export default function TeacherExamsPage() {
 
     fetchExams();
   }, [user]);
-
-  const handleToggleLive = async (exam: Exam, nextLive: boolean) => {
-    setTogglingId(exam.id);
-    // Optimistic update so the switch feels responsive.
-    setExams((prev) =>
-      prev.map((e) => (e.id === exam.id ? { ...e, isLive: nextLive } : e))
-    );
-    try {
-      if (nextLive) {
-        await examService.openLiveSession(exam.id);
-        toast({ title: "Exam is live", description: `"${exam.title}" is now visible to students.` });
-      } else {
-        await examService.closeLiveSession(exam.id);
-        toast({ title: "Exam set to draft", description: `"${exam.title}" is no longer visible to students.` });
-      }
-    } catch {
-      // Roll back on failure.
-      setExams((prev) =>
-        prev.map((e) => (e.id === exam.id ? { ...e, isLive: !nextLive } : e))
-      );
-      toast({
-        title: "Error",
-        description: "Failed to update exam status.",
-        variant: "destructive",
-      });
-    } finally {
-      setTogglingId(null);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -99,14 +66,16 @@ export default function TeacherExamsPage() {
                     <CardTitle className="text-lg">{exam.title}</CardTitle>
                     <CardDescription className="mt-1">{exam.description}</CardDescription>
                   </div>
-                  <Switch
-                    checked={exam.isLive}
-                    disabled={togglingId === exam.id}
-                    onCheckedChange={(next) => handleToggleLive(exam, next)}
-                    onLabel="Live"
-                    offLabel="Off"
-                    title={exam.isLive ? "Set exam to draft" : "Set exam live"}
-                  />
+                  {exam.isLive ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800 shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                      Live
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 shrink-0">
+                      Draft
+                    </span>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
