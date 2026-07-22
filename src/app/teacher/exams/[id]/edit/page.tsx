@@ -78,6 +78,7 @@ export default function EditExamPage() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLive, setIsLive] = useState(false);
 
   const {
     register,
@@ -104,16 +105,7 @@ export default function EditExamPage() {
           return;
         }
 
-        if (exam.isLive) {
-          toast({
-            title: "Exam is live",
-            description: "Close the live session before editing.",
-            variant: "destructive",
-          });
-          router.push(`/teacher/exams/${examId}`);
-          return;
-        }
-
+        setIsLive(exam.isLive);
         setLibraryExercises(exs);
         setAllStudents(students);
         reset({ title: exam.title, description: exam.description ?? "" });
@@ -198,6 +190,7 @@ export default function EditExamPage() {
       const updated = await examService.updateExam(examId, {
         title: data.title,
         description: data.description ?? "",
+        isLive,
         exerciseIds: selectedExercises.map((e) => e.id),
         assignedStudentIds: selectedStudentIds,
         questions: selectedExercises.map((ex, index) => ({
@@ -215,7 +208,7 @@ export default function EditExamPage() {
     } catch {
       toast({
         title: "Error",
-        description: "Failed to update exam. Make sure it is not live.",
+        description: "Failed to update exam. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -237,9 +230,19 @@ export default function EditExamPage() {
     <Layout role="teacher">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Edit Exam</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold">Edit Exam</h1>
+            {isLive && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                Live
+              </span>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
-            Update exercises and assigned students before opening a live session
+            {isLive
+              ? "This exam is live. Changes save immediately and are reflected for students."
+              : "Update exercises and assigned students before opening a live session"}
           </p>
         </div>
 

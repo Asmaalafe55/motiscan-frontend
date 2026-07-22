@@ -7,6 +7,7 @@ import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { examService } from "@/services/exam.service";
 import { liveSessionService } from "@/services/liveSession.service";
 import { studentService } from "@/services/student.service";
@@ -24,8 +25,6 @@ import {
   FileText,
   ImageIcon,
   Pencil,
-  Play,
-  Square,
   Users,
   Star,
   SlidersHorizontal,
@@ -87,6 +86,7 @@ export default function ExamDetailPage() {
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
   const [submissions, setSubmissions] = useState<ExamSubmission[]>([]);
   const [reportLoadingFor, setReportLoadingFor] = useState<string | null>(null);
+  const [togglingLive, setTogglingLive] = useState(false);
 
   // Add-students dialog state
   const [addOpen, setAddOpen] = useState(false);
@@ -177,6 +177,19 @@ export default function ExamDetailPage() {
       toast({ title: "Session closed", description: "The exam is no longer available to students." });
     } catch {
       toast({ title: "Error", description: "Failed to close session.", variant: "destructive" });
+    }
+  };
+
+  const handleToggleLive = async (nextLive: boolean) => {
+    setTogglingLive(true);
+    try {
+      if (nextLive) {
+        await handleOpenSession();
+      } else {
+        await handleCloseSession();
+      }
+    } finally {
+      setTogglingLive(false);
     }
   };
 
@@ -410,16 +423,26 @@ export default function ExamDetailPage() {
               </span>
             </div>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
-            {!exam.isLive && (
-              <Button
-                variant="outline"
-                onClick={() => router.push(`/teacher/exams/${examId}/edit`)}
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                Edit Exam
-              </Button>
-            )}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div
+              className="flex items-center gap-2 rounded-lg border px-3 py-2"
+              title={exam.isLive ? "Set exam to draft" : "Set exam live"}
+            >
+              <Switch
+                checked={exam.isLive}
+                disabled={togglingLive}
+                onCheckedChange={handleToggleLive}
+                onLabel="Live"
+                offLabel="Off"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/teacher/exams/${examId}/edit`)}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit Exam
+            </Button>
             <Button
               variant="outline"
               onClick={handleExportReport}
@@ -428,17 +451,6 @@ export default function ExamDetailPage() {
               <FileText className="h-4 w-4 mr-2" />
               Export Report
             </Button>
-            {exam.isLive ? (
-              <Button onClick={handleCloseSession} variant="destructive">
-                <Square className="h-4 w-4 mr-2" />
-                Close Session
-              </Button>
-            ) : (
-              <Button onClick={handleOpenSession} variant="gradient">
-                <Play className="h-4 w-4 mr-2" />
-                Open Live Session
-              </Button>
-            )}
           </div>
         </div>
 
