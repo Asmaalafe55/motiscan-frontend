@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { examService } from "@/services/exam.service";
 import { studentService } from "@/services/student.service";
 import { reportService } from "@/services/report.service";
+import { pushActivity } from "@/lib/notifications";
 import { Exam, ExamSubmission, User } from "@/types";
 import {
   BarChart3,
@@ -115,6 +116,17 @@ export default function TeacherReportsPage() {
     setGenerating((prev) => new Set(prev).add(key));
     try {
       await reportService.generateReport(submissionId);
+
+      const row = data.find((r) => r.student.id === studentId);
+      const exam = row?.submissions.find((s) => s.examId === examId)?.exam;
+      pushActivity({
+        type: "report",
+        studentId,
+        studentName: row?.student.name ?? "A student",
+        examId,
+        examTitle: exam?.title,
+      });
+
       router.push(`/teacher/reports/${studentId}/${examId}`);
     } catch (err) {
       console.error("Failed to generate report:", err);

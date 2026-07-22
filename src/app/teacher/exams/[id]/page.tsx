@@ -256,7 +256,6 @@ export default function ExamDetailPage() {
     router.push(`/teacher/reports/${studentId}/${examId}`);
   };
 
-<<<<<<< HEAD
   // Build a printable report of the exam and open the browser's print dialog,
   // which offers "Save as PDF" or a physical printer — a standard export flow.
   const handleExportReport = () => {
@@ -362,8 +361,6 @@ export default function ExamDetailPage() {
   };
 
   // ---- Derive which students are online vs offline ----
-  const onlineSet = new Set(connectedStudentIds);
-=======
   // Students currently active (socket-connected or DB session online/away)
   const activeStudentIds = Array.from(
     new Set([
@@ -375,7 +372,6 @@ export default function ExamDetailPage() {
   );
 
   const onlineSet = new Set(activeStudentIds);
->>>>>>> a7063362aaca6a18141a881d0733ad5bbe1a8c27
   const offlineStudents = assignedStudents.filter((s) => !onlineSet.has(s.id));
 
   // ---- Students available to add (not already assigned) ----

@@ -23,7 +23,6 @@ import { ExercisePreviewModal } from "@/components/exercises/ExercisePreviewModa
 import { TypeSelectorModal } from "@/components/exercises/TypeSelectorModal";
 import type { ExerciseTypeKey } from "@/components/exercises/exerciseTypeCatalog";
 import type { Exercise } from "@/types";
-import { toImageSrc } from "@/lib/svg";
 import { useToast } from "@/hooks/use-toast";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import {
@@ -342,11 +341,7 @@ export default function ExerciseLibraryPage() {
                     <div className="p-2.5 pb-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-<<<<<<< HEAD
-                        src={toImageSrc(ex.question.shapeCopyConfig.rows[0].model_snapshot)}
-=======
                         src={resolveMediaUrl(ex.question.shapeCopyConfig.rows[0].model_snapshot)}
->>>>>>> a7063362aaca6a18141a881d0733ad5bbe1a8c27
                         alt="Model shape"
                         className="w-full rounded border border-border object-contain bg-[#f8f8f8]"
                         style={{ aspectRatio: "4/3", maxHeight: 80 }}

@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { LiveSession } from "@/types";
 import { liveSessionService } from "@/services/liveSession.service";
 import { connectSocket, disconnectSocket, getSocket } from "@/lib/socket";
+import { pushActivity } from "@/lib/notifications";
 
 interface LiveSessionContextType {
   activeSessions: Map<string, LiveSession>;
@@ -85,6 +86,17 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    const onStudentSubmitted = (payload: { examId?: string; studentId: string; studentName?: string }) => {
+      if (!payload.studentId) return;
+      console.log("[Socket] Student submitted:", payload.studentName ?? payload.studentId);
+      pushActivity({
+        type: "submission",
+        studentId: payload.studentId,
+        studentName: payload.studentName ?? payload.studentId,
+        examId: resolveExamId(payload.examId),
+      });
+    };
+
     const onStudentLeft = ({ examId: payloadExamId, studentId }: { examId?: string; studentId: string }) => {
       const examId = resolveExamId(payloadExamId);
       if (examId && studentId) {
@@ -127,6 +139,7 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
     socket.on("session:studentJoined", onStudentJoined);
+    socket.on("session:studentSubmitted", onStudentSubmitted);
     socket.on("session:studentLeft", onStudentLeft);
     socket.on("session:roster", onRoster);
     socket.on("session:opened", onSessionOpened);
@@ -137,6 +150,7 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
       socket.off("session:studentJoined", onStudentJoined);
+      socket.off("session:studentSubmitted", onStudentSubmitted);
       socket.off("session:studentLeft", onStudentLeft);
       socket.off("session:roster", onRoster);
       socket.off("session:opened", onSessionOpened);

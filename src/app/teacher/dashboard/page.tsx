@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RecentActivity } from "@/components/RecentActivity";
 import { examService } from "@/services/exam.service";
 import { studentService } from "@/services/student.service";
-import { reportService } from "@/services/report.service";
+import { Exam, ExamSubmission, User as UserType } from "@/types";
 import { User, FileText, BarChart3, Clock } from "lucide-react";
 
 export default function TeacherDashboard() {
@@ -16,22 +17,28 @@ export default function TeacherDashboard() {
     activeExams: 0,
     pendingReports: 0,
   });
+  const [students, setStudents] = useState<UserType[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [submissions, setSubmissions] = useState<ExamSubmission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [students, exams, reportCount] = await Promise.all([
+        const [studentList, examList, submissionList] = await Promise.all([
           studentService.getAllStudents(),
           examService.getAllExams(),
-          reportService.getGeneratedCount(),
+          examService.getAllSubmissions(),
         ]);
 
+        setStudents(studentList);
+        setExams(examList);
+        setSubmissions(submissionList);
         setStats({
-          totalStudents: students.length,
-          totalExams: exams.length,
-          activeExams: exams.filter((e) => e.isLive).length,
-          pendingReports: reportCount,
+          totalStudents: studentList.length,
+          totalExams: examList.length,
+          activeExams: examList.filter((e) => e.isLive).length,
+          pendingReports: submissionList.filter((s) => s.hasReport).length,
         });
       } catch (error) {
         console.error("Error fetching stats:", error);
@@ -123,6 +130,8 @@ export default function TeacherDashboard() {
         </Link>
 
         </div>
+
+        <RecentActivity students={students} exams={exams} submissions={submissions} />
       </div>
     </Layout>
   );
