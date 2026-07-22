@@ -111,58 +111,8 @@ function shapeBounds(s: CanvasShape) {
   };
 }
 
-function getShapeBoundingBox(s: CanvasShape) {
-  if (s.type === "pen" || s.type === "line" || s.type === "arrow") {
-    if (!s.points?.length) {
-      return { minX: s.x, minY: s.y, maxX: s.x, maxY: s.y };
-    }
-    const xs = s.points.map((p) => p.x);
-    const ys = s.points.map((p) => p.y);
-    return {
-      minX: Math.min(...xs),
-      minY: Math.min(...ys),
-      maxX: Math.max(...xs),
-      maxY: Math.max(...ys),
-    };
-  }
-
-  const b = shapeBounds(s);
-  return { minX: b.x, minY: b.y, maxX: b.x + b.w, maxY: b.y + b.h };
-}
-
-/** Move a shape so its bounding box is centered on a square canvas. */
-function centerShapeOnCanvas(s: CanvasShape, canvasSize: number): CanvasShape {
-  const bb = getShapeBoundingBox(s);
-  const shapeCx = (bb.minX + bb.maxX) / 2;
-  const shapeCy = (bb.minY + bb.maxY) / 2;
-  const dx = canvasSize / 2 - shapeCx;
-  const dy = canvasSize / 2 - shapeCy;
-
-  if (s.type === "pen" || s.type === "line" || s.type === "arrow") {
-    return {
-      ...s,
-      x: s.x + dx,
-      y: s.y + dy,
-      points: s.points?.map((p) => ({ x: p.x + dx, y: p.y + dy })),
-    };
-  }
-
-  return { ...s, x: s.x + dx, y: s.y + dy };
-}
-
-function drawSnapshotCentered(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  canvasSize: number
-) {
-  const scale = Math.min(canvasSize / img.width, canvasSize / img.height, 1);
-  const w = img.width * scale;
-  const h = img.height * scale;
-  const x = (canvasSize - w) / 2;
-  const y = (canvasSize - h) / 2;
-  ctx.clearRect(0, 0, canvasSize, canvasSize);
-  ctx.drawImage(img, x, y, w, h);
-}
+/** Max board size (px) — keeps teacher/student boards compact and square. */
+export const SHAPE_BOARD_MAX_PX = 280;
 
 function hitTest(s: CanvasShape, px: number, py: number): boolean {
   const b = shapeBounds(s);
@@ -416,11 +366,12 @@ export const ShapeCanvas = forwardRef<ShapeCanvasHandle, ShapeCanvasProps>(
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // If readOnly, draw modelSnapshot centered on the square board
+      // If readOnly, draw modelSnapshot to fill the square board
       if (readOnly && modelSnapshot) {
         const img = new Image();
         img.onload = () => {
-          drawSnapshotCentered(ctx, img, canvas.width);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         };
         img.src = toImageSrc(modelSnapshot);
         return;
@@ -567,7 +518,7 @@ export const ShapeCanvas = forwardRef<ShapeCanvasHandle, ShapeCanvasProps>(
       if (!canvas || !container) return;
 
       const resize = () => {
-        const size = container.clientWidth;
+        const size = Math.min(container.clientWidth, SHAPE_BOARD_MAX_PX);
         canvas.width = size;
         canvas.height = size;
         render();
@@ -767,14 +718,10 @@ export const ShapeCanvas = forwardRef<ShapeCanvasHandle, ShapeCanvasProps>(
           onFirstShapeDrawn?.();
         }
 
-        const canvasSize = canvasRef.current?.width ?? 0;
-        const placed =
-          canvasSize > 0
-            ? centerShapeOnCanvas({ ...s, drawn_order: drawnCountRef.current }, canvasSize)
-            : { ...s, drawn_order: drawnCountRef.current };
-        shapesRef.current = [...shapesRef.current, placed];
-        selectedIdRef.current = placed.id;
-        setSelectedId(placed.id);
+        const finalShape = { ...s, drawn_order: drawnCountRef.current };
+        shapesRef.current = [...shapesRef.current, finalShape];
+        selectedIdRef.current = finalShape.id;
+        setSelectedId(finalShape.id);
         onShapeCountChange?.(shapesRef.current.length);
       }
 
@@ -813,7 +760,8 @@ export const ShapeCanvas = forwardRef<ShapeCanvasHandle, ShapeCanvasProps>(
 
       const img = new Image();
       img.onload = () => {
-        drawSnapshotCentered(ctx, img, canvas.width);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       };
       img.src = toImageSrc(modelSnapshot);
     }, [readOnly, modelSnapshot]);
@@ -825,7 +773,7 @@ export const ShapeCanvas = forwardRef<ShapeCanvasHandle, ShapeCanvasProps>(
     return (
       <div
         ref={containerRef}
-        className={`relative w-full aspect-square rounded-lg overflow-hidden transition-all ${
+        className={`relative mx-auto w-full max-w-[280px] aspect-square rounded-lg overflow-hidden transition-all ${
           readOnly
             ? "bg-[#f8f8f8] cursor-default"
             : isActive

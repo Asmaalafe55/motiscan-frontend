@@ -22,6 +22,7 @@ import {
   Eye,
   FileText,
   ImageIcon,
+  Loader2,
   Pencil,
   Users,
   Star,
@@ -82,7 +83,7 @@ export default function ExamDetailPage() {
   const [reportLoadingFor, setReportLoadingFor] = useState<string | null>(null);
 
   // Live session hook (auto-polls every 10s when isLive)
-  const { connectedStudentIds, sessions, studentNames } = useExamSession(
+  const { connectedStudentIds, sessions, studentNames, liveExerciseIndex } = useExamSession(
     examId,
     !!exam?.isLive
   );
@@ -297,6 +298,12 @@ export default function ExamDetailPage() {
   // ---- For timeline rendering ----
   const getSession = (sid: string) => sessions.find((s) => s.studentId === sid);
 
+  const resolveStudentName = (sid: string) =>
+    assignedStudents.find((s) => s.id === sid)?.name ??
+    studentNames[sid] ??
+    getSession(sid)?.studentName ??
+    sid;
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -453,7 +460,7 @@ export default function ExamDetailPage() {
                 {exam.isLive && (
                   <CardDescription className="flex items-center gap-1 text-xs">
                     <Clock className="h-3 w-3" />
-                    Auto-refreshes every 10 seconds
+                    Auto-refreshes every 30 seconds
                   </CardDescription>
                 )}
               </CardHeader>
@@ -468,8 +475,14 @@ export default function ExamDetailPage() {
                   <div className="space-y-3">
                     {activeStudentIds.map((sid) => {
                       const session = getSession(sid);
-                      const user = studentNames[sid];
-                      const name = user?.name ?? sid;
+                      const name = resolveStudentName(sid);
+                      const exerciseIndex =
+                        session?.currentExerciseIndex ?? liveExerciseIndex[sid];
+                      const totalExercises = session?.totalExercises ?? exam.questions.length;
+                      const progressLabel =
+                        typeof exerciseIndex === "number"
+                          ? `Exercise ${exerciseIndex + 1} of ${totalExercises}`
+                          : "Online — in exam";
 
                       const statusLabel =
                         session?.status === "submitted" ? "Submitted" :
@@ -498,9 +511,7 @@ export default function ExamDetailPage() {
                               <div>
                                 <p className="text-sm font-medium">{name}</p>
                                 <p className="text-[11px] text-muted-foreground">
-                                  {session
-                                    ? `Exercise ${session.currentExerciseIndex + 1} of ${session.totalExercises}`
-                                    : "Connecting…"}
+                                  {progressLabel}
                                 </p>
                               </div>
                             </div>
@@ -544,7 +555,11 @@ export default function ExamDetailPage() {
                                 disabled={reportLoadingFor === sid}
                                 onClick={() => handleGetReport(sid)}
                               >
-                                <BarChart2 className="h-3.5 w-3.5 mr-1.5" />
+                                {reportLoadingFor === sid ? (
+                                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                ) : (
+                                  <BarChart2 className="h-3.5 w-3.5 mr-1.5" />
+                                )}
                                 {reportLoadingFor === sid ? "Opening…" : "View AI Report"}
                               </Button>
                             </div>
@@ -591,7 +606,11 @@ export default function ExamDetailPage() {
                           disabled={reportLoadingFor === sub.studentId}
                           onClick={() => handleGetReport(sub.studentId)}
                         >
-                          <BarChart2 className="h-3.5 w-3.5 mr-1.5" />
+                          {reportLoadingFor === sub.studentId ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          ) : (
+                            <BarChart2 className="h-3.5 w-3.5 mr-1.5" />
+                          )}
                           {reportLoadingFor === sub.studentId ? "Opening…" : "View AI Report"}
                         </Button>
                       </div>
@@ -640,7 +659,11 @@ export default function ExamDetailPage() {
                               disabled={reportLoadingFor === student.id}
                               onClick={() => handleGetReport(student.id)}
                             >
-                              <BarChart2 className="h-3 w-3 mr-1" />
+                              {reportLoadingFor === student.id ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <BarChart2 className="h-3 w-3 mr-1" />
+                              )}
                               {reportLoadingFor === student.id ? "Opening…" : "View AI Report"}
                             </Button>
                           )}

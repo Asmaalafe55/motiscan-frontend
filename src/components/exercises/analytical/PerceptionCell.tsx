@@ -1,22 +1,18 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 interface PerceptionCellProps {
   cellLabel: string;          // e.g. "A1"
-  designSvg: string;          // raw SVG string for the complex design
-  sectionSvg: string;         // raw SVG string for the section shape
+  designSvg: string;          // raw SVG string or data/URL for the complex design
+  sectionSvg: string;         // raw SVG string or data/URL for the section shape
   value: number | null;       // current selected answer (null = not answered)
   onChange: (value: number) => void;
   onTimeUpdate?: (seconds: number) => void;
 }
 
-const ANSWER_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-/** Convert a raw SVG string to a data URI suitable for an <img> src. */
-function svgToDataUri(svg: string): string {
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
+const ANSWER_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
 export function PerceptionCellComponent({
   cellLabel,
@@ -27,6 +23,8 @@ export function PerceptionCellComponent({
   onTimeUpdate,
 }: PerceptionCellProps) {
   const mountedAt = useRef(Date.now());
+  const designSrc = resolveMediaUrl(designSvg);
+  const sectionSrc = resolveMediaUrl(sectionSvg);
 
   // Report elapsed time to parent on unmount / interval
   useEffect(() => {
@@ -56,10 +54,10 @@ export function PerceptionCellComponent({
         className="flex items-center justify-center p-2 bg-white overflow-hidden"
         style={{ height: 140 }}
       >
-        {designSvg ? (
+        {designSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={svgToDataUri(designSvg)}
+            src={designSrc}
             alt={`Design ${cellLabel}`}
             className="w-full h-full object-contain"
             draggable={false}
@@ -94,10 +92,10 @@ export function PerceptionCellComponent({
           className="flex-shrink-0 w-10 h-10 overflow-hidden"
           title="Section shape"
         >
-          {sectionSvg ? (
+          {sectionSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={svgToDataUri(sectionSvg)}
+              src={sectionSrc}
               alt="Section shape"
               className="w-full h-full object-contain"
               draggable={false}
