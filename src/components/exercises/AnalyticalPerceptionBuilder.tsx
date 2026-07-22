@@ -14,6 +14,7 @@ import {
 import { AnalyticalPerceptionExercise } from "./AnalyticalPerceptionExercise";
 import { Eye, Loader2, Plus, Trash2, Upload } from "lucide-react";
 import { uploadImages } from "@/lib/uploadImage";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import type {
   Exercise,
   AnalyticalPerceptionConfig,
@@ -300,7 +301,7 @@ export function AnalyticalPerceptionBuilder({
                   <div className="relative group" style={{ height: 80 }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(cell.design_svg)}`}
+                      src={resolveMediaUrl(cell.design_svg)}
                       alt="Design"
                       className="w-full h-full rounded border border-gray-100 bg-gray-50 object-contain"
                       draggable={false}
@@ -329,7 +330,7 @@ export function AnalyticalPerceptionBuilder({
                   <div className="relative group w-10 h-10">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(cell.section_svg)}`}
+                      src={resolveMediaUrl(cell.section_svg)}
                       alt="Section shape"
                       className="w-10 h-10 rounded border border-gray-100 object-contain"
                       draggable={false}
