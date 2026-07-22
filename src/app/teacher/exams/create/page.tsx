@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { exerciseLibraryService } from "@/services/exerciseLibrary.service";
 import { examService } from "@/services/exam.service";
 import { studentService } from "@/services/student.service";
@@ -93,6 +94,9 @@ export default function CreateExamPage() {
 
   // Preview
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
+
+  // Live toggle — new exams default to Draft (OFF).
+  const [isLive, setIsLive] = useState(false);
 
   // Form
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -200,7 +204,18 @@ export default function CreateExamPage() {
         await exerciseLibraryService.createTemplateFromExam(exam);
       }
 
-      toast({ title: "Exam created", description: "Your exam has been saved." });
+      // New exams are created as drafts; open a live session immediately when
+      // the teacher flipped the toggle on before saving.
+      if (isLive) {
+        await examService.openLiveSession(exam.id);
+      }
+
+      toast({
+        title: "Exam created",
+        description: isLive
+          ? "Your exam is now live and visible to assigned students."
+          : "Your exam has been saved as a draft.",
+      });
       router.push(`/teacher/exams/${exam.id}`);
     } catch {
       toast({ title: "Error", description: "Failed to create exam.", variant: "destructive" });
@@ -215,9 +230,26 @@ export default function CreateExamPage() {
   return (
     <Layout role="teacher">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Create New Exam</h1>
-          <p className="text-sm text-muted-foreground">Select exercises from your library and assign students</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Create New Exam</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {isLive
+                ? "This exam will go live and be visible to assigned students as soon as you save."
+                : "Select exercises and assign students. Toggle on to make this exam live when you save."}
+            </p>
+          </div>
+          <div
+            className="flex items-center gap-2 rounded-lg border px-3 py-2 shrink-0"
+            title={isLive ? "Set exam to draft" : "Set exam live"}
+          >
+            <Switch
+              checked={isLive}
+              onCheckedChange={setIsLive}
+              onLabel="Live"
+              offLabel="Off"
+            />
+          </div>
         </div>
 
         {/* ── Exam details ── */}

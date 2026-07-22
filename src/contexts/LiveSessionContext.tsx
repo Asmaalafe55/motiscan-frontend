@@ -159,7 +159,11 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
     };
   }, [addConnectedStudent, removeConnectedStudent, syncSession]);
 
-  const refreshSession = async (examId: string) => {
+  // Memoized so its identity stays stable across renders. Consumers use this in
+  // effect dependency arrays; an unstable identity would re-trigger those
+  // effects on every provider render (which re-emits socket events) and cause
+  // an infinite render/emit loop.
+  const refreshSession = useCallback(async (examId: string) => {
     const session = await liveSessionService.getLiveSession(examId);
     if (session) {
       setActiveSessions((prev) => {
@@ -168,11 +172,12 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
         return newMap;
       });
     }
-  };
+  }, []);
 
-  const getSession = (examId: string): LiveSession | null => {
-    return activeSessions.get(examId) || null;
-  };
+  const getSession = useCallback(
+    (examId: string): LiveSession | null => activeSessions.get(examId) || null,
+    [activeSessions]
+  );
 
   return (
     <LiveSessionContext.Provider
