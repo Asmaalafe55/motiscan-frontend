@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,38 +8,13 @@ import { Button } from "@/components/ui/button";
 import { examService } from "@/services/exam.service";
 import type { Exam } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { cn } from "@/lib/utils";
-import { BookOpen, CheckCircle2, Clock, Eye, FileText, User } from "lucide-react";
-
-type ExamStatus = "live" | "upcoming" | "submitted";
-type ExamFilter = "all" | ExamStatus;
-
-function getExamStatus(exam: Exam): ExamStatus {
-  if (exam.hasSubmitted === true) return "submitted";
-  if (exam.isLive === true) return "live";
-  return "upcoming";
-}
-
-// Lower number = higher priority. LIVE exams always float to the top.
-const STATUS_PRIORITY: Record<ExamStatus, number> = {
-  live: 0,
-  upcoming: 1,
-  submitted: 2,
-};
-
-const FILTERS: { value: ExamFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "live", label: "Live" },
-  { value: "upcoming", label: "Upcoming" },
-  { value: "submitted", label: "Completed" },
-];
+import { BookOpen, FileText, User } from "lucide-react";
 
 export default function StudentDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<ExamFilter>("all");
 
   useEffect(() => {
     if (!user) return;
@@ -47,7 +22,11 @@ export default function StudentDashboard() {
     const fetchExams = async () => {
       try {
         const assigned = await examService.getExamsForStudent(user.id);
-        setExams(assigned);
+        // Only show exams the teacher has opened right now that the student
+        // has not already submitted.
+        setExams(
+          assigned.filter((exam) => exam.isLive === true && exam.hasSubmitted !== true)
+        );
       } catch (err) {
         console.error("Error fetching assigned exams:", err);
       } finally {
@@ -57,33 +36,10 @@ export default function StudentDashboard() {
 
     fetchExams();
 
-    // Poll every 5 seconds so newly opened sessions move from Upcoming to Live.
+    // Poll every 5 seconds so newly opened sessions appear here.
     const interval = setInterval(fetchExams, 5000);
     return () => clearInterval(interval);
   }, [user]);
-
-  const counts = useMemo(() => {
-    const base: Record<ExamFilter, number> = {
-      all: exams.length,
-      live: 0,
-      upcoming: 0,
-      submitted: 0,
-    };
-    for (const exam of exams) base[getExamStatus(exam)]++;
-    return base;
-  }, [exams]);
-
-  const filteredExams = useMemo(() => {
-    const list =
-      activeFilter === "all"
-        ? exams
-        : exams.filter((e) => getExamStatus(e) === activeFilter);
-
-    // Prioritize LIVE exams at the top; keep original order within a status.
-    return [...list].sort(
-      (a, b) => STATUS_PRIORITY[getExamStatus(a)] - STATUS_PRIORITY[getExamStatus(b)]
-    );
-  }, [exams, activeFilter]);
 
   if (isLoading) {
     return (
@@ -102,92 +58,31 @@ export default function StudentDashboard() {
     <Layout role="student">
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">My Exams</h1>
+          <h1 className="text-2xl font-bold">Available Exams</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Exams assigned to you by your teacher
+            Exams your teacher has opened for you right now
           </p>
         </div>
 
-        {/* Status filter pills */}
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((filter) => {
-            const isActive = activeFilter === filter.value;
-            return (
-              <button
-                key={filter.value}
-                type="button"
-                onClick={() => setActiveFilter(filter.value)}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "border-transparent bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow"
-                    : "border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                {filter.label}
-                <span
-                  className={cn(
-                    "inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-xs font-semibold",
-                    isActive ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {counts[filter.value]}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {filteredExams.length === 0 ? (
+        {exams.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 gap-3">
               <BookOpen className="h-12 w-12 text-muted-foreground/40" />
-              <p className="text-muted-foreground font-medium">
-                {activeFilter === "all"
-                  ? "No exams assigned yet"
-                  : `No ${FILTERS.find((f) => f.value === activeFilter)?.label.toLowerCase()} exams`}
-              </p>
+              <p className="text-muted-foreground font-medium">No live exams available</p>
               <p className="text-sm text-muted-foreground">
-                {activeFilter === "all"
-                  ? "Check back later — assigned exams will appear here."
-                  : "Try a different filter to see your other exams."}
+                Check back later or wait for your teacher to open an exam
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredExams.map((exam) => (
+            {exams.map((exam) => (
               <ExamCard key={exam.id} exam={exam} router={router} />
             ))}
           </div>
         )}
       </div>
     </Layout>
-  );
-}
-
-function StatusBadge({ status }: { status: ExamStatus }) {
-  if (status === "submitted") {
-    return (
-      <span className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        Submitted
-      </span>
-    );
-  }
-  if (status === "live") {
-    return (
-      <span className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
-        <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-        Live
-      </span>
-    );
-  }
-  return (
-    <span className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
-      <Clock className="h-3.5 w-3.5" />
-      Upcoming
-    </span>
   );
 }
 
@@ -198,17 +93,8 @@ function ExamCard({
   exam: Exam;
   router: ReturnType<typeof useRouter>;
 }) {
-  const status = getExamStatus(exam);
-
-  const borderClass =
-    status === "submitted"
-      ? "border-blue-200"
-      : status === "live"
-      ? "border-green-200"
-      : "border-amber-200";
-
   return (
-    <Card className={`flex flex-col hover:shadow-lg transition-shadow ${borderClass}`}>
+    <Card className="flex flex-col hover:shadow-lg transition-shadow border-green-200">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -217,7 +103,10 @@ function ExamCard({
               <CardDescription className="mt-1 line-clamp-2">{exam.description}</CardDescription>
             )}
           </div>
-          <StatusBadge status={status} />
+          <span className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+            Live
+          </span>
         </div>
       </CardHeader>
 
@@ -237,30 +126,14 @@ function ExamCard({
           )}
         </div>
 
-        {status === "submitted" ? (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => router.push("/student/history")}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            View Results
-          </Button>
-        ) : status === "live" ? (
-          <Button
-            variant="gradient"
-            className="w-full"
-            onClick={() => router.push(`/student/exam/${exam.id}`)}
-          >
-            <BookOpen className="h-4 w-4 mr-2" />
-            Enter Exam
-          </Button>
-        ) : (
-          <Button variant="outline" className="w-full" disabled>
-            <Clock className="h-4 w-4 mr-2" />
-            Waiting to Start
-          </Button>
-        )}
+        <Button
+          variant="gradient"
+          className="w-full"
+          onClick={() => router.push(`/student/exam/${exam.id}`)}
+        >
+          <BookOpen className="h-4 w-4 mr-2" />
+          Enter Exam
+        </Button>
       </CardContent>
     </Card>
   );
