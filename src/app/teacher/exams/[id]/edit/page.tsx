@@ -149,9 +149,8 @@ function EditExamForm() {
         setSelectedStudentIds(exam.assignedStudentIds ?? []);
 
         if (exam.exerciseIds?.length) {
-          const selected = await exerciseLibraryService.getExercisesByIds(exam.exerciseIds);
           const ordered = exam.exerciseIds
-            .map((id) => selected.find((e) => e.id === id))
+            .map((id) => exs.find((e) => e.id === id))
             .filter((e): e is Exercise => Boolean(e));
           setSelectedExercises(ordered);
         }
