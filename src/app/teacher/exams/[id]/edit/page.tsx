@@ -13,6 +13,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { exerciseLibraryService } from "@/services/exerciseLibrary.service";
 import { examService } from "@/services/exam.service";
 import { studentService } from "@/services/student.service";
@@ -20,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ExercisePreviewModal } from "@/components/exercises/ExercisePreviewModal";
 import type { Exercise, User } from "@/types";
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
   BookOpen,
@@ -27,6 +37,7 @@ import {
   Eye,
   ImageIcon,
   Loader2,
+  Lock,
   Plus,
   Save,
   Star,
@@ -87,6 +98,16 @@ function EditExamForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLive, setIsLive] = useState(false);
   const [initialIsLive, setInitialIsLive] = useState(false);
+  const [duration, setDuration] = useState("");
+  // Number of students who have actively started but not yet submitted.
+  const [activeStudentCount, setActiveStudentCount] = useState(0);
+  const [showLiveWarning, setShowLiveWarning] = useState(false);
+
+  // Soft lock: only restrict core question structure when the exam was already
+  // live AND at least one student is actively taking it. If nobody has started
+  // (activeStudentCount === 0), full editing stays allowed.
+  const softLocked = initialIsLive && activeStudentCount > 0;
+  const lockTooltip = "Cannot be modified while exam is LIVE";
 
   const {
     register,
@@ -121,6 +142,7 @@ function EditExamForm() {
 
         setIsLive(exam.isLive);
         setInitialIsLive(exam.isLive);
+        setDuration(exam.duration ? String(exam.duration) : "");
         setLibraryExercises(exs);
         setAllStudents(students);
         reset({ title: exam.title, description: exam.description ?? "" });
@@ -132,6 +154,17 @@ function EditExamForm() {
             .map((id) => selected.find((e) => e.id === id))
             .filter((e): e is Exercise => Boolean(e));
           setSelectedExercises(ordered);
+        }
+
+        // When editing a LIVE exam, warn the teacher and determine how many
+        // students are actively taking it (online/away = started, not submitted).
+        if (exam.isLive) {
+          const sessions = await examService.getExamSessions(examId);
+          const active = sessions.filter(
+            (s) => s.status === "online" || s.status === "away"
+          ).length;
+          setActiveStudentCount(active);
+          setShowLiveWarning(true);
         }
       } catch {
         toast({ title: "Error", description: "Failed to load exam.", variant: "destructive" });
@@ -156,6 +189,8 @@ function EditExamForm() {
   const isSelected = (id: string) => selectedExercises.some((e) => e.id === id);
 
   const toggleExercise = (ex: Exercise) => {
+    // Adding/removing questions alters the exam structure — locked while live.
+    if (softLocked) return;
     if (isSelected(ex.id)) {
       setSelectedExercises((prev) => prev.filter((e) => e.id !== ex.id));
     } else {
@@ -163,11 +198,13 @@ function EditExamForm() {
     }
   };
 
-  const removeSelected = (id: string) =>
+  const removeSelected = (id: string) => {
+    if (softLocked) return;
     setSelectedExercises((prev) => prev.filter((e) => e.id !== id));
+  };
 
   const moveUp = (idx: number) => {
-    if (idx === 0) return;
+    if (softLocked || idx === 0) return;
     setSelectedExercises((prev) => {
       const arr = [...prev];
       [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
@@ -176,6 +213,7 @@ function EditExamForm() {
   };
 
   const moveDown = (idx: number) => {
+    if (softLocked) return;
     setSelectedExercises((prev) => {
       if (idx >= prev.length - 1) return prev;
       const arr = [...prev];
@@ -206,6 +244,7 @@ function EditExamForm() {
         title: data.title,
         description: data.description ?? "",
         isLive,
+        duration: duration ? Number(duration) : undefined,
         exerciseIds: selectedExercises.map((e) => e.id),
         assignedStudentIds: selectedStudentIds,
         questions: selectedExercises.map((ex, index) => ({
@@ -285,6 +324,36 @@ function EditExamForm() {
           </div>
         </div>
 
+        {softLocked && (
+          <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="font-semibold">
+                This exam is currently LIVE — {activeStudentCount} student
+                {activeStudentCount === 1 ? " is" : "s are"} in progress.
+              </p>
+              <p>
+                Core question structure is locked to protect active submissions.
+                You can still edit the instructions, duration, question phrasing,
+                and assigned students.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {initialIsLive && !softLocked && (
+          <div className="flex items-start gap-3 rounded-lg border border-sky-300 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="font-semibold">This exam is live.</p>
+              <p>
+                No students have started yet, so full editing is allowed. Changes
+                made after a student begins may affect their submission.
+              </p>
+            </div>
+          </div>
+        )}
+
         <Card>
           <CardHeader><CardTitle>Exam Details</CardTitle></CardHeader>
           <CardContent className="space-y-4">
@@ -294,8 +363,23 @@ function EditExamForm() {
               {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Description / Instructions</Label>
               <Textarea id="description" rows={2} {...register("description")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="duration">Duration (minutes)</Label>
+              <Input
+                id="duration"
+                type="number"
+                min={0}
+                placeholder="Unlimited"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty for unlimited time.
+                {softLocked && " You can still extend or shorten the duration while the exam is live."}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -303,7 +387,14 @@ function EditExamForm() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="flex flex-col">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Exercise Library</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                Exercise Library
+                {softLocked && (
+                  <Tooltip content={lockTooltip}>
+                    <Lock className="h-3.5 w-3.5 text-amber-600" />
+                  </Tooltip>
+                )}
+              </CardTitle>
               <div className="relative mt-1">
                 <Input
                   className="pl-8 h-8 text-sm"
@@ -313,6 +404,12 @@ function EditExamForm() {
                 />
                 <BookOpen className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               </div>
+              {softLocked && (
+                <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-700">
+                  <Lock className="h-3 w-3" />
+                  Adding or removing questions is locked while the exam is live.
+                </p>
+              )}
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto max-h-96 space-y-2 pt-0">
               {libraryLoading ? (
@@ -324,7 +421,10 @@ function EditExamForm() {
                     <div
                       key={ex.id}
                       onClick={() => toggleExercise(ex)}
-                      className={`flex items-start gap-2 rounded-lg border p-2.5 cursor-pointer transition-colors ${
+                      title={softLocked ? lockTooltip : undefined}
+                      className={`flex items-start gap-2 rounded-lg border p-2.5 transition-colors ${
+                        softLocked ? "cursor-not-allowed opacity-70" : "cursor-pointer"
+                      } ${
                         sel ? "border-blue-400 bg-blue-50" : "border-border hover:bg-muted/50"
                       }`}
                     >
@@ -371,16 +471,26 @@ function EditExamForm() {
                         {TYPE_LABEL[ex.type] ?? ex.type}
                       </span>
                       <span className="text-sm font-medium flex-1 line-clamp-1">{ex.title}</span>
-                      <div className="flex gap-0.5">
-                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveUp(idx)} disabled={idx === 0}>
-                          <ArrowUp className="h-3 w-3" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveDown(idx)} disabled={idx === selectedExercises.length - 1}>
-                          <ArrowDown className="h-3 w-3" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeSelected(ex.id)}>
-                          <X className="h-3 w-3" />
-                        </Button>
+                      <div className="flex items-center gap-0.5">
+                        {softLocked ? (
+                          <Tooltip content={lockTooltip}>
+                            <span className="inline-flex h-6 w-6 items-center justify-center text-amber-600">
+                              <Lock className="h-3.5 w-3.5" />
+                            </span>
+                          </Tooltip>
+                        ) : (
+                          <>
+                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveUp(idx)} disabled={idx === 0}>
+                              <ArrowUp className="h-3 w-3" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveDown(idx)} disabled={idx === selectedExercises.length - 1}>
+                              <ArrowDown className="h-3 w-3" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeSelected(ex.id)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -441,6 +551,62 @@ function EditExamForm() {
         open={!!previewExercise}
         onClose={() => setPreviewExercise(null)}
       />
+
+      <Dialog open={showLiveWarning} onOpenChange={setShowLiveWarning}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              This exam is currently LIVE!
+            </DialogTitle>
+            <DialogDescription>
+              Modifying core question structures may affect active student
+              submissions.
+            </DialogDescription>
+          </DialogHeader>
+
+          {softLocked ? (
+            <div className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                {activeStudentCount} student
+                {activeStudentCount === 1 ? " has" : "s have"} already started
+                this exam, so some fields are locked to protect their work.
+              </p>
+              <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+                <p className="font-semibold text-green-800">You can still edit:</p>
+                <ul className="mt-1 list-disc pl-5 text-green-700">
+                  <li>General instructions &amp; description</li>
+                  <li>Exam duration</li>
+                  <li>Assigned students</li>
+                  <li>Question text / phrasing</li>
+                </ul>
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="flex items-center gap-1.5 font-semibold text-amber-800">
+                  <Lock className="h-3.5 w-3.5" />
+                  Locked while live:
+                </p>
+                <ul className="mt-1 list-disc pl-5 text-amber-700">
+                  <li>Adding, removing, or reordering questions</li>
+                  <li>Changing correct answers or point weights</li>
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No students have started this exam yet, so you can edit freely.
+              Please save your changes before students begin — edits made after a
+              student starts may affect their submission.
+            </p>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="gradient" onClick={() => setShowLiveWarning(false)}>
+              I understand
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
