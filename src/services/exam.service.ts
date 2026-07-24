@@ -104,13 +104,18 @@ export const examService = {
     return data.exams.filter((e) => e.isLive).map(summaryExam);
   },
 
-  getLiveExamsForStudent: async (_studentId: string): Promise<Exam[]> => {
+  // Returns every exam assigned to the student (live + upcoming). Each exam's
+  // `isLive` flag lets the UI separate exams that are open now from those that
+  // are assigned but not yet started by the teacher.
+  getExamsForStudent: async (_studentId: string): Promise<Exam[]> => {
     const data = await api.get<ExamsListResponse>("/api/student/exams");
     return data.exams.map(summaryExam);
   },
 
-  getExamsForStudent: async (_studentId: string): Promise<Exam[]> => {
-    return examService.getLiveExamsForStudent(_studentId);
+  // Convenience filter for callers that only care about currently-open exams.
+  getLiveExamsForStudent: async (studentId: string): Promise<Exam[]> => {
+    const exams = await examService.getExamsForStudent(studentId);
+    return exams.filter((e) => e.isLive);
   },
 
   getExamForStudent: async (examId: string): Promise<Exam | null> => {
@@ -180,6 +185,16 @@ export const examService = {
     });
 
     return loadFullExam(data.exam, data.exercises, data.assignedStudentIds ?? []);
+  },
+
+  // Append students to an existing exam without replacing current assignments.
+  // Returns the full, updated list of assigned student ids.
+  addStudentsToExam: async (examId: string, studentIds: string[]): Promise<string[]> => {
+    const data = await api.post<{ assignedStudentIds: string[] }>(
+      `/api/exams/${examId}/students`,
+      { studentIds }
+    );
+    return data.assignedStudentIds ?? [];
   },
 
   openLiveSession: async (examId: string): Promise<Exam | null> => {

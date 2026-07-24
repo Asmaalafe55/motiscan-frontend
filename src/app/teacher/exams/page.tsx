@@ -61,14 +61,19 @@ export default function TeacherExamsPage() {
           {exams.map((exam) => (
             <Card key={exam.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
                     <CardTitle className="text-lg">{exam.title}</CardTitle>
                     <CardDescription className="mt-1">{exam.description}</CardDescription>
                   </div>
-                  {exam.isLive && (
-                    <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                  {exam.isLive ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800 shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                       Live
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 shrink-0">
+                      Draft
                     </span>
                   )}
                 </div>
@@ -97,15 +102,13 @@ export default function TeacherExamsPage() {
                   >
                     View Details
                   </Button>
-                  {!exam.isLive && (
-                    <Button
-                      variant="outline"
-                      onClick={() => router.push(`/teacher/exams/${exam.id}/edit`)}
-                      title="Edit exam"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push(`/teacher/exams/${exam.id}/edit?from=list`)}
+                    title="Edit exam"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>

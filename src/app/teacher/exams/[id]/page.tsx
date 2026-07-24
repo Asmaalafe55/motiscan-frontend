@@ -17,15 +17,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useLiveSession } from "@/contexts/LiveSessionContext";
 import { connectSocket } from "@/lib/socket";
 import {
-  BookOpen,
   Clock,
   Eye,
   FileText,
   ImageIcon,
   Loader2,
   Pencil,
-  Play,
-  Square,
   Users,
   Star,
   SlidersHorizontal,
@@ -83,7 +80,6 @@ export default function ExamDetailPage() {
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
   const [submissions, setSubmissions] = useState<ExamSubmission[]>([]);
   const [reportLoadingFor, setReportLoadingFor] = useState<string | null>(null);
-  const [sessionActionLoading, setSessionActionLoading] = useState<"open" | "close" | null>(null);
 
   // Live session hook (auto-polls every 10s when isLive)
   const { connectedStudentIds, sessions, studentNames, liveExerciseIndex } = useExamSession(
@@ -159,34 +155,6 @@ export default function ExamDetailPage() {
     return () => setActiveExamId(null);
   }, [exam?.isLive, examId, refreshSession, setActiveExamId]);
 
-  const handleOpenSession = async () => {
-    setSessionActionLoading("open");
-    try {
-      await examService.openLiveSession(examId);
-      await liveSessionService.startLiveSession(examId);
-      setExam((prev) => prev ? { ...prev, isLive: true } : null);
-      toast({ title: "Live session started", description: "Students can now join this exam." });
-    } catch {
-      toast({ title: "Error", description: "Failed to start session.", variant: "destructive" });
-    } finally {
-      setSessionActionLoading(null);
-    }
-  };
-
-  const handleCloseSession = async () => {
-    setSessionActionLoading("close");
-    try {
-      await examService.closeLiveSession(examId);
-      await liveSessionService.endLiveSession(examId);
-      setExam((prev) => prev ? { ...prev, isLive: false } : null);
-      toast({ title: "Session closed", description: "The exam is no longer available to students." });
-    } catch {
-      toast({ title: "Error", description: "Failed to close session.", variant: "destructive" });
-    } finally {
-      setSessionActionLoading(null);
-    }
-  };
-
   if (isLoading) {
     return (
       <Layout role="teacher">
@@ -219,6 +187,111 @@ export default function ExamDetailPage() {
     router.push(`/teacher/reports/${studentId}/${examId}`);
   };
 
+  // Build a printable report of the exam and open the browser's print dialog,
+  // which offers "Save as PDF" or a physical printer — a standard export flow.
+  const handleExportReport = () => {
+    if (!exam) return;
+
+    const esc = (v: unknown) =>
+      String(v ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    const submittedIds = new Set(submissions.map((s) => s.studentId));
+
+    const exercisesRows = exam.questions
+      .map((q, idx) => {
+        const libEx = exam.exerciseIds?.[idx]
+          ? libraryExercises[exam.exerciseIds[idx]]
+          : undefined;
+        const title = libEx?.title ?? q.text ?? `Exercise ${idx + 1}`;
+        const type = TYPE_LABEL[q.type] ?? q.type;
+        return `<tr><td>${idx + 1}</td><td>${esc(title)}</td><td>${esc(type)}</td></tr>`;
+      })
+      .join("");
+
+    const studentsRows = assignedStudents
+      .map((s) => {
+        const sub = submissions.find((x) => x.studentId === s.id);
+        const status = submittedIds.has(s.id)
+          ? `Submitted${sub ? ` (${format(new Date(sub.submittedAt), "MMM d, yyyy h:mm a")})` : ""}`
+          : "Not submitted";
+        return `<tr><td>${esc(s.name)}</td><td>${esc(s.email)}</td><td>${esc(status)}</td></tr>`;
+      })
+      .join("");
+
+    const submittedCount = assignedStudents.filter((s) => submittedIds.has(s.id)).length;
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>MotiScan — ${esc(exam.title)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #1a1a1a; margin: 40px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 28px 0 8px; border-bottom: 2px solid #6d28d9; padding-bottom: 4px; color: #4c1d95; }
+  .muted { color: #666; font-size: 13px; }
+  .meta { margin-top: 8px; font-size: 13px; }
+  .meta span { display: inline-block; margin-right: 16px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
+  th { background: #f5f3ff; color: #4c1d95; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .live { background: #dcfce7; color: #166534; }
+  .draft { background: #f3f4f6; color: #4b5563; }
+  .footer { margin-top: 40px; font-size: 11px; color: #999; border-top: 1px solid #e5e7eb; padding-top: 8px; }
+  @media print { body { margin: 16px; } h2 { break-after: avoid; } tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+  <h1>${esc(exam.title)}</h1>
+  ${exam.description ? `<p class="muted">${esc(exam.description)}</p>` : ""}
+  <div class="meta">
+    <span><strong>Status:</strong> <span class="badge ${exam.isLive ? "live" : "draft"}">${exam.isLive ? "Live" : "Draft"}</span></span>
+    <span><strong>Created:</strong> ${esc(format(new Date(exam.createdAt), "MMM d, yyyy"))}</span>
+    <span><strong>Exercises:</strong> ${exam.questions.length}</span>
+    <span><strong>Assigned:</strong> ${assignedStudents.length}</span>
+    <span><strong>Submitted:</strong> ${submittedCount}/${assignedStudents.length}</span>
+  </div>
+
+  <h2>Exercises</h2>
+  ${
+    exercisesRows
+      ? `<table><thead><tr><th>#</th><th>Title</th><th>Type</th></tr></thead><tbody>${exercisesRows}</tbody></table>`
+      : `<p class="muted">No exercises in this exam.</p>`
+  }
+
+  <h2>Assigned Students</h2>
+  ${
+    studentsRows
+      ? `<table><thead><tr><th>Name</th><th>Email</th><th>Status</th></tr></thead><tbody>${studentsRows}</tbody></table>`
+      : `<p class="muted">No students assigned to this exam.</p>`
+  }
+
+  <div class="footer">Generated by MotiScan on ${esc(format(new Date(), "MMM d, yyyy 'at' h:mm a"))}</div>
+  <script>window.onload = function () { window.focus(); window.print(); };</script>
+</body>
+</html>`;
+
+    const printWindow = window.open("", "_blank", "width=900,height=650");
+    if (!printWindow) {
+      toast({
+        title: "Popup blocked",
+        description: "Allow popups for this site to export the report.",
+        variant: "destructive",
+      });
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  // ---- Derive which students are online vs offline ----
   // Students currently active (socket-connected or DB session online/away)
   const activeStudentIds = Array.from(
     new Set([
@@ -270,52 +343,22 @@ export default function ExamDetailPage() {
               </span>
             </div>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
-            {!exam.isLive && (
-              <Button
-                variant="outline"
-                onClick={() => router.push(`/teacher/exams/${examId}/edit`)}
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                Edit Exam
-              </Button>
-            )}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <Button
+              variant="gradient"
+              onClick={() => router.push(`/teacher/exams/${examId}/edit?from=details`)}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit Exam
+            </Button>
             <Button
               variant="outline"
-              disabled={exam.isLive}
-              className="text-muted-foreground"
-              title="Available after session closes"
+              onClick={handleExportReport}
+              title="Export or print this exam report"
             >
               <FileText className="h-4 w-4 mr-2" />
               Export Report
             </Button>
-            {exam.isLive ? (
-              <Button
-                onClick={handleCloseSession}
-                variant="destructive"
-                disabled={sessionActionLoading !== null}
-              >
-                {sessionActionLoading === "close" ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Square className="h-4 w-4 mr-2" />
-                )}
-                {sessionActionLoading === "close" ? "Closing…" : "Close Session"}
-              </Button>
-            ) : (
-              <Button
-                onClick={handleOpenSession}
-                variant="gradient"
-                disabled={sessionActionLoading !== null}
-              >
-                {sessionActionLoading === "open" ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Play className="h-4 w-4 mr-2" />
-                )}
-                {sessionActionLoading === "open" ? "Opening…" : "Open Live Session"}
-              </Button>
-            )}
           </div>
         </div>
 
@@ -380,15 +423,20 @@ export default function ExamDetailPage() {
             </Card>
 
             {/* Assigned students summary */}
-            {assignedStudents.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Users className="h-4 w-4" />
-                    Assigned Students
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Users className="h-4 w-4" />
+                  Assigned Students
+                  {assignedStudents.length > 0 && (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      ({assignedStudents.length})
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {assignedStudents.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {assignedStudents.map((s) => (
                       <div key={s.id} className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm">
@@ -399,9 +447,13 @@ export default function ExamDetailPage() {
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No students assigned yet. Use <span className="font-medium">Edit Exam</span> to assign students.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* ═══════════════════════════════════════

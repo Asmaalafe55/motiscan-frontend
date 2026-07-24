@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { exerciseLibraryService } from "@/services/exerciseLibrary.service";
 import { examService } from "@/services/exam.service";
 import { studentService } from "@/services/student.service";
@@ -63,11 +64,17 @@ function typeBadge(type: string) {
   return TYPE_BADGE[type] ?? "bg-gray-100 text-gray-700";
 }
 
-export default function EditExamPage() {
+function EditExamForm() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const examId = params.id as string;
   const { toast } = useToast();
+
+  // Where the teacher came from: "list" (main Exams page) or "details"
+  // (the read-only View Details screen). Defaults to View Details.
+  const cameFromList = searchParams.get("from") === "list";
+  const cancelHref = cameFromList ? "/teacher/exams" : `/teacher/exams/${examId}`;
 
   const [libraryExercises, setLibraryExercises] = useState<Exercise[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(true);
@@ -78,6 +85,8 @@ export default function EditExamPage() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLive, setIsLive] = useState(false);
+  const [initialIsLive, setInitialIsLive] = useState(false);
 
   const {
     register,
@@ -88,6 +97,12 @@ export default function EditExamPage() {
     resolver: zodResolver(examSchema),
     defaultValues: { title: "", description: "" },
   });
+
+  // Discard any unsaved edits and return to the originating screen.
+  const handleCancel = () => {
+    reset();
+    router.push(cancelHref);
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -104,16 +119,8 @@ export default function EditExamPage() {
           return;
         }
 
-        if (exam.isLive) {
-          toast({
-            title: "Exam is live",
-            description: "Close the live session before editing.",
-            variant: "destructive",
-          });
-          router.push(`/teacher/exams/${examId}`);
-          return;
-        }
-
+        setIsLive(exam.isLive);
+        setInitialIsLive(exam.isLive);
         setLibraryExercises(exs);
         setAllStudents(students);
         reset({ title: exam.title, description: exam.description ?? "" });
@@ -197,6 +204,7 @@ export default function EditExamPage() {
       const updated = await examService.updateExam(examId, {
         title: data.title,
         description: data.description ?? "",
+        isLive,
         exerciseIds: selectedExercises.map((e) => e.id),
         assignedStudentIds: selectedStudentIds,
         questions: selectedExercises.map((ex, index) => ({
@@ -209,12 +217,31 @@ export default function EditExamPage() {
 
       if (!updated) throw new Error("Update failed");
 
-      toast({ title: "Exam updated", description: "Changes saved successfully." });
+      // Open/close the live session (and notify students via socket) only when
+      // the teacher flipped the toggle while editing.
+      if (isLive !== initialIsLive) {
+        if (isLive) {
+          await examService.openLiveSession(examId);
+        } else {
+          await examService.closeLiveSession(examId);
+        }
+        setInitialIsLive(isLive);
+      }
+
+      toast({
+        title: "Exam updated",
+        description:
+          isLive !== initialIsLive
+            ? isLive
+              ? "Changes saved. The exam is now live and visible to students."
+              : "Changes saved. The exam is now a draft and hidden from students."
+            : "Changes saved successfully.",
+      });
       router.push(`/teacher/exams/${examId}`);
     } catch {
       toast({
         title: "Error",
-        description: "Failed to update exam. Make sure it is not live.",
+        description: "Failed to update exam. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -235,11 +262,26 @@ export default function EditExamPage() {
   return (
     <Layout role="teacher">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Edit Exam</h1>
-          <p className="text-sm text-muted-foreground">
-            Update exercises and assigned students before opening a live session
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Edit Exam</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {isLive
+                ? "This exam is live and visible to students. Toggle off to return it to a draft."
+                : "Toggle on to make this exam live and visible to students, then save your changes."}
+            </p>
+          </div>
+          <div
+            className="flex items-center gap-2 rounded-lg border px-3 py-2 shrink-0"
+            title={isLive ? "Set exam to draft" : "Set exam live"}
+          >
+            <Switch
+              checked={isLive}
+              onCheckedChange={setIsLive}
+              onLabel="Live"
+              offLabel="Off"
+            />
+          </div>
         </div>
 
         <Card>
@@ -380,7 +422,7 @@ export default function EditExamPage() {
         </Card>
 
         <div className="flex gap-4">
-          <Button type="button" variant="outline" onClick={() => router.push(`/teacher/exams/${examId}`)} disabled={isSubmitting}>
+          <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button type="submit" variant="gradient" disabled={isSubmitting}>
@@ -399,5 +441,24 @@ export default function EditExamPage() {
         onClose={() => setPreviewExercise(null)}
       />
     </Layout>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page — wraps the form in Suspense (required for useSearchParams in Next.js)
+// ---------------------------------------------------------------------------
+export default function EditExamPage() {
+  return (
+    <Suspense
+      fallback={
+        <Layout role="teacher">
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">Loading exam…</p>
+          </div>
+        </Layout>
+      }
+    >
+      <EditExamForm />
+    </Suspense>
   );
 }
