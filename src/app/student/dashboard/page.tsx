@@ -8,38 +8,23 @@ import { Button } from "@/components/ui/button";
 import { examService } from "@/services/exam.service";
 import type { Exam } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { BookOpen, CalendarClock, CheckCircle2, Eye, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BookOpen, CheckCircle2, Clock, Eye, FileText, User } from "lucide-react";
 
-type ExamStatus = "live" | "upcoming" | "submitted";
-type ExamFilter = "all" | ExamStatus;
+type ExamFilter = "all" | "live" | "upcoming" | "completed";
 
-function getExamStatus(exam: Exam): ExamStatus {
-  if (exam.hasSubmitted === true) return "submitted";
-  if (exam.isLive === true) return "live";
+function getStatus(exam: Exam): Exclude<ExamFilter, "all"> {
+  if (exam.hasSubmitted) return "completed";
+  if (exam.isLive) return "live";
   return "upcoming";
 }
-
-// Lower number = higher priority. LIVE exams always float to the top.
-const STATUS_PRIORITY: Record<ExamStatus, number> = {
-  live: 0,
-  upcoming: 1,
-  submitted: 2,
-};
-
-const FILTERS: { value: ExamFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "live", label: "Live" },
-  { value: "upcoming", label: "Upcoming" },
-  { value: "submitted", label: "Completed" },
-];
 
 export default function StudentDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<ExamFilter>("all");
+  const [filter, setFilter] = useState<ExamFilter>("all");
 
   useEffect(() => {
     if (!user) return;
@@ -57,33 +42,32 @@ export default function StudentDashboard() {
 
     fetchExams();
 
-    // Poll every 5 seconds so newly opened sessions move from Upcoming to Live.
+    // Poll every 5 seconds so newly opened / submitted sessions stay in sync.
     const interval = setInterval(fetchExams, 5000);
     return () => clearInterval(interval);
   }, [user]);
 
-  const counts = useMemo(() => {
-    const base: Record<ExamFilter, number> = {
+  const counts = useMemo(
+    () => ({
       all: exams.length,
-      live: 0,
-      upcoming: 0,
-      submitted: 0,
-    };
-    for (const exam of exams) base[getExamStatus(exam)]++;
-    return base;
-  }, [exams]);
+      live: exams.filter((e) => getStatus(e) === "live").length,
+      upcoming: exams.filter((e) => getStatus(e) === "upcoming").length,
+      completed: exams.filter((e) => getStatus(e) === "completed").length,
+    }),
+    [exams]
+  );
 
-  const filteredExams = useMemo(() => {
-    const list =
-      activeFilter === "all"
-        ? exams
-        : exams.filter((e) => getExamStatus(e) === activeFilter);
+  const visibleExams = useMemo(
+    () => (filter === "all" ? exams : exams.filter((e) => getStatus(e) === filter)),
+    [exams, filter]
+  );
 
-    // Prioritize LIVE exams at the top; keep original order within a status.
-    return [...list].sort(
-      (a, b) => STATUS_PRIORITY[getExamStatus(a)] - STATUS_PRIORITY[getExamStatus(b)]
-    );
-  }, [exams, activeFilter]);
+  const tabs: { key: ExamFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "live", label: "Live" },
+    { key: "upcoming", label: "Upcoming" },
+    { key: "completed", label: "Completed" },
+  ];
 
   if (isLoading) {
     return (
@@ -108,55 +92,50 @@ export default function StudentDashboard() {
           </p>
         </div>
 
-        {/* Status filter pills */}
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((filter) => {
-            const isActive = activeFilter === filter.value;
+        {/* Filter tabs */}
+        <div className="flex flex-wrap items-center gap-2">
+          {tabs.map((tab) => {
+            const active = filter === tab.key;
             return (
               <button
-                key={filter.value}
-                type="button"
-                onClick={() => setActiveFilter(filter.value)}
+                key={tab.key}
+                onClick={() => setFilter(tab.key)}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "border-transparent bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow"
-                    : "border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow"
+                    : "border border-input bg-white text-foreground hover:bg-accent"
                 )}
               >
-                {filter.label}
+                {tab.label}
                 <span
                   className={cn(
-                    "inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-xs font-semibold",
-                    isActive ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                    "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold",
+                    active ? "bg-white/25 text-white" : "bg-muted text-muted-foreground"
                   )}
                 >
-                  {counts[filter.value]}
+                  {counts[tab.key]}
                 </span>
               </button>
             );
           })}
         </div>
 
-        {filteredExams.length === 0 ? (
+        {visibleExams.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 gap-3">
               <BookOpen className="h-12 w-12 text-muted-foreground/40" />
-              <p className="text-muted-foreground font-medium">
-                {activeFilter === "all"
-                  ? "No exams assigned yet"
-                  : `No ${FILTERS.find((f) => f.value === activeFilter)?.label.toLowerCase()} exams`}
-              </p>
+              <p className="text-muted-foreground font-medium">No exams to show</p>
               <p className="text-sm text-muted-foreground">
-                {activeFilter === "all"
-                  ? "Check back later — assigned exams will appear here."
-                  : "Try a different filter to see your other exams."}
+                {filter === "all"
+                  ? "Your teacher hasn't assigned any exams yet"
+                  : `You have no ${filter} exams right now`}
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredExams.map((exam) => (
+            {visibleExams.map((exam) => (
               <ExamCard key={exam.id} exam={exam} router={router} />
             ))}
           </div>
@@ -166,15 +145,16 @@ export default function StudentDashboard() {
   );
 }
 
-function StatusBadge({ status }: { status: ExamStatus }) {
-  if (status === "submitted") {
+function StatusBadge({ status }: { status: Exclude<ExamFilter, "all"> }) {
+  if (status === "completed") {
     return (
-      <span className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
+      <span className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700">
         <CheckCircle2 className="h-3.5 w-3.5" />
         Submitted
       </span>
     );
   }
+
   if (status === "live") {
     return (
       <span className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
@@ -183,9 +163,10 @@ function StatusBadge({ status }: { status: ExamStatus }) {
       </span>
     );
   }
+
   return (
-    <span className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
-      <Clock className="h-3.5 w-3.5" />
+    <span className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+      <CalendarClock className="h-3.5 w-3.5" />
       Upcoming
     </span>
   );
@@ -198,23 +179,25 @@ function ExamCard({
   exam: Exam;
   router: ReturnType<typeof useRouter>;
 }) {
-  const status = getExamStatus(exam);
-
-  const borderClass =
-    status === "submitted"
-      ? "border-blue-200"
-      : status === "live"
-      ? "border-green-200"
-      : "border-amber-200";
+  const status = getStatus(exam);
+  const exerciseCount = exam.questions.length;
 
   return (
-    <Card className={`flex flex-col hover:shadow-lg transition-shadow ${borderClass}`}>
+    <Card
+      className={cn(
+        "flex flex-col hover:shadow-lg transition-shadow",
+        status === "live" && "border-green-200",
+        status === "completed" && "border-blue-100"
+      )}
+    >
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="text-lg leading-snug">{exam.title}</CardTitle>
             {exam.description && (
-              <CardDescription className="mt-1 line-clamp-2">{exam.description}</CardDescription>
+              <CardDescription className="mt-1 line-clamp-2">
+                {exam.description}
+              </CardDescription>
             )}
           </div>
           <StatusBadge status={status} />
@@ -222,22 +205,14 @@ function ExamCard({
       </CardHeader>
 
       <CardContent className="mt-auto space-y-3">
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <FileText className="h-4 w-4" />
-            <span>
-              {exam.questions.length} exercise{exam.questions.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-          {exam.teacherName && (
-            <div className="flex items-center gap-1.5">
-              <User className="h-4 w-4" />
-              <span>{exam.teacherName}</span>
-            </div>
-          )}
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <FileText className="h-4 w-4" />
+          <span>
+            {exerciseCount} exercise{exerciseCount !== 1 ? "s" : ""}
+          </span>
         </div>
 
-        {status === "submitted" ? (
+        {status === "completed" && (
           <Button
             variant="outline"
             className="w-full"
@@ -246,7 +221,9 @@ function ExamCard({
             <Eye className="h-4 w-4 mr-2" />
             View Results
           </Button>
-        ) : status === "live" ? (
+        )}
+
+        {status === "live" && (
           <Button
             variant="gradient"
             className="w-full"
@@ -255,10 +232,12 @@ function ExamCard({
             <BookOpen className="h-4 w-4 mr-2" />
             Enter Exam
           </Button>
-        ) : (
+        )}
+
+        {status === "upcoming" && (
           <Button variant="outline" className="w-full" disabled>
-            <Clock className="h-4 w-4 mr-2" />
-            Waiting to Start
+            <CalendarClock className="h-4 w-4 mr-2" />
+            Not started yet
           </Button>
         )}
       </CardContent>

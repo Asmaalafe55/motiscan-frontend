@@ -7,6 +7,7 @@ import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { examService } from "@/services/exam.service";
 import { liveSessionService } from "@/services/liveSession.service";
 import { studentService } from "@/services/student.service";
@@ -85,6 +86,7 @@ export default function ExamDetailPage() {
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
   const [submissions, setSubmissions] = useState<ExamSubmission[]>([]);
   const [reportLoadingFor, setReportLoadingFor] = useState<string | null>(null);
+  const [isTogglingLive, setIsTogglingLive] = useState(false);
 
   // Live session hook (auto-polls every 10s when isLive)
   const { connectedStudentIds, sessions, studentNames, liveExerciseIndex } = useExamSession(
@@ -190,6 +192,39 @@ export default function ExamDetailPage() {
     setReportLoadingFor(studentId);
     // Navigate — the report page itself shows the 2-second AI loading state
     router.push(`/teacher/reports/${studentId}/${examId}`);
+  };
+
+  // Flip the exam between live and draft directly from View Details, without
+  // entering full Edit mode. Optimistically updates the UI, then opens/closes
+  // the live session (which also notifies connected students via socket).
+  const handleToggleLive = async (next: boolean) => {
+    if (!exam || isTogglingLive) return;
+    const previous = exam.isLive;
+    setIsTogglingLive(true);
+    setExam({ ...exam, isLive: next });
+    try {
+      if (next) {
+        await examService.openLiveSession(examId);
+      } else {
+        await examService.closeLiveSession(examId);
+      }
+      toast({
+        title: next ? "Exam is now live" : "Exam set to draft",
+        description: next
+          ? "The exam is now live and visible to assigned students."
+          : "The exam is now a draft and hidden from students.",
+      });
+    } catch (err) {
+      console.error(err);
+      setExam((prev) => (prev ? { ...prev, isLive: previous } : prev));
+      toast({
+        title: "Couldn't update status",
+        description: "Something went wrong while changing the exam status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTogglingLive(false);
+    }
   };
 
   // Build a printable report of the exam and open the browser's print dialog,
@@ -349,6 +384,20 @@ export default function ExamDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Live toggle — lets the teacher switch between live and draft
+                without leaving the read-only View Details screen. */}
+            <div
+              className="flex items-center gap-2 rounded-lg border px-3 py-2"
+              title={exam.isLive ? "Set exam to draft" : "Set exam live"}
+            >
+              <Switch
+                checked={exam.isLive}
+                onCheckedChange={handleToggleLive}
+                disabled={isTogglingLive}
+                onLabel="Live"
+                offLabel="Off"
+              />
+            </div>
             <Button
               variant="gradient"
               onClick={() => router.push(`/teacher/exams/${examId}/edit?from=details`)}

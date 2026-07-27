@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { examService } from "@/services/exam.service";
 import { studentService } from "@/services/student.service";
 import { reportService, Report, ReportScores } from "@/services/report.service";
+import { downloadReportPdf } from "@/lib/reportPdf";
 import { Exam, User } from "@/types";
-import { ArrowLeft, Download, Brain, RefreshCw } from "lucide-react";
+import { ArrowLeft, Download, Brain } from "lucide-react";
 import { format } from "date-fns";
 
 // ---------------------------------------------------------------------------
@@ -100,7 +101,6 @@ export default function AIReportPage() {
   const [student, setStudent] = useState<User | null>(null);
   const [timeSpent, setTimeSpent] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRegenerating, setIsRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -143,17 +143,16 @@ export default function AIReportPage() {
     load();
   }, [examId, studentId]);
 
-  const handleRegenerate = async () => {
-    if (!report) return;
-    setIsRegenerating(true);
-    try {
-      const fresh = await reportService.generateReport(report.submissionId);
-      setReport(fresh);
-    } catch (err) {
-      console.error("Failed to regenerate report:", err);
-    } finally {
-      setIsRegenerating(false);
-    }
+  const handleDownloadPdf = () => {
+    if (!report || !exam || !student) return;
+    downloadReportPdf({
+      report,
+      examTitle: exam.title,
+      examDescription: exam.description,
+      studentName: student.name,
+      totalTimeLabel: fmtTime(timeSpent),
+      exerciseCount: exam.questions.length,
+    });
   };
 
   if (isLoading) {
@@ -205,16 +204,10 @@ export default function AIReportPage() {
           Back
         </Button>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleRegenerate} disabled={isRegenerating} className="gap-2">
-            <RefreshCw className={`h-4 w-4 ${isRegenerating ? "animate-spin" : ""}`} />
-            Regenerate
+          <Button variant="outline" onClick={handleDownloadPdf} className="gap-2">
+            <Download className="h-4 w-4" />
+            Download PDF
           </Button>
-          <a href={reportService.getPdfUrl(report.id)} target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Download PDF
-            </Button>
-          </a>
         </div>
       </div>
 
