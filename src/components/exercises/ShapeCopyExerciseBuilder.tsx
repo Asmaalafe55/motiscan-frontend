@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -131,6 +131,7 @@ export function ShapeCopyExerciseBuilder({
   const [fillColor, setFillColor] = useState("#3b82f6");
   const [borderColor, setBorderColor] = useState("#1a1a1a");
   const [activeModelRow, setActiveModelRow] = useState<number>(0);
+  const [hasSelection, setHasSelection] = useState(false);
 
   // Model canvas refs indexed by row
   const modelRefs = useRef<Record<number, React.RefObject<ShapeCanvasHandle | null>>>({});
@@ -139,6 +140,11 @@ export function ShapeCopyExerciseBuilder({
       modelRefs.current[i] = { current: null } as React.RefObject<ShapeCanvasHandle | null>;
     }
   });
+
+  // Reset selection state when switching which model row is active
+  useEffect(() => {
+    setHasSelection(false);
+  }, [activeModelRow]);
 
   // Capture model snapshots from canvases
   const captureSnapshots = useCallback((): string[] => {
@@ -334,7 +340,7 @@ export function ShapeCopyExerciseBuilder({
           onRedo={handleRedo}
           onDelete={handleDelete}
           onDuplicate={handleDuplicate}
-          hasSelection={false}
+          hasSelection={hasSelection}
         />
       </div>
 
@@ -399,6 +405,9 @@ export function ShapeCopyExerciseBuilder({
                 activeTool={activeModelRow === i ? activeTool : "select"}
                 fillColor={fillColor}
                 borderColor={borderColor}
+                onSelectionChange={(has) => {
+                  if (activeModelRow === i) setHasSelection(has);
+                }}
               />
             </div>
 

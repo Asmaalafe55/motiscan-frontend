@@ -66,6 +66,8 @@ interface ShapeCanvasProps {
   isActive?: boolean;
   onFirstShapeDrawn?: () => void;
   onShapeCountChange?: (count: number) => void;
+  /** Fires whenever selection changes (true = a shape is selected). */
+  onSelectionChange?: (hasSelection: boolean) => void;
   activeTool: ToolType;
   fillColor: string;
   borderColor: string;
@@ -307,7 +309,17 @@ function drawHandles(ctx: CanvasRenderingContext2D, s: CanvasShape) {
 
 export const ShapeCanvas = forwardRef<ShapeCanvasHandle, ShapeCanvasProps>(
   function ShapeCanvas(
-    { readOnly = false, modelSnapshot, isActive = false, onFirstShapeDrawn, onShapeCountChange, activeTool, fillColor, borderColor },
+    {
+      readOnly = false,
+      modelSnapshot,
+      isActive = false,
+      onFirstShapeDrawn,
+      onShapeCountChange,
+      onSelectionChange,
+      activeTool,
+      fillColor,
+      borderColor,
+    },
     ref
   ) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -353,6 +365,11 @@ export const ShapeCanvas = forwardRef<ShapeCanvasHandle, ShapeCanvasProps>(
     useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
     useEffect(() => { fillColorRef.current = fillColor; }, [fillColor]);
     useEffect(() => { borderColorRef.current = borderColor; }, [borderColor]);
+
+    // Notify parent when selection changes (enables Delete / Duplicate toolbar buttons)
+    useEffect(() => {
+      onSelectionChange?.(selectedId !== null);
+    }, [selectedId, onSelectionChange]);
 
     // ---------------------------------------------------------------------------
     // Render loop

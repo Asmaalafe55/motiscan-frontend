@@ -60,6 +60,7 @@ interface RowSectionProps {
   fillColor: string;
   borderColor: string;
   onFirstShapeDrawn: (rowIndex: number, figure: "A" | "B") => void;
+  onSelectionChange: (hasSelection: boolean) => void;
 }
 
 function RowSection({
@@ -76,6 +77,7 @@ function RowSection({
   fillColor,
   borderColor,
   onFirstShapeDrawn,
+  onSelectionChange,
 }: RowSectionProps) {
   const keyA = `${rowIndex}-A`;
   const keyB = `${rowIndex}-B`;
@@ -119,6 +121,9 @@ function RowSection({
               fillColor={fillColor}
               borderColor={borderColor}
               onFirstShapeDrawn={() => onFirstShapeDrawn(rowIndex, "A")}
+              onSelectionChange={(has) => {
+                if (activeFigure === keyA) onSelectionChange(has);
+              }}
             />
           </div>
           <RuleLabels rules={figureARules} />
@@ -138,6 +143,9 @@ function RowSection({
               fillColor={fillColor}
               borderColor={borderColor}
               onFirstShapeDrawn={() => onFirstShapeDrawn(rowIndex, "B")}
+              onSelectionChange={(has) => {
+                if (activeFigure === keyB) onSelectionChange(has);
+              }}
             />
           </div>
           <RuleLabels rules={figureBRules} />
@@ -324,9 +332,8 @@ export function ShapeCopyExercise({
     getActiveCanvas()?.setBorderColor(color);
   }, [getActiveCanvas]);
 
-  // Determine if active canvas has a selection (simplified — always allow buttons)
+  // Track whether the active canvas has a selected shape (for Delete / Duplicate)
   const [hasSelection, setHasSelection] = useState(false);
-  // We track this by watching activeFigure changes (rough approximation)
   useEffect(() => { setHasSelection(false); }, [activeFigure]);
 
   // ---------------------------------------------------------------------------
@@ -400,6 +407,7 @@ export function ShapeCopyExercise({
               fillColor={fillColor}
               borderColor={borderColor}
               onFirstShapeDrawn={handleFirstShapeDrawn}
+              onSelectionChange={setHasSelection}
             />
           );
         })}

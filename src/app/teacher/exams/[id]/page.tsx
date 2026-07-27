@@ -55,12 +55,17 @@ function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 }
 
-function formatElapsed(startedAt: string) {
-  const ms = Date.now() - new Date(startedAt).getTime();
+/** Total time in exam. When endedAt is set (e.g. after submit), freezes at that moment. */
+function formatElapsed(startedAt: string, endedAt?: string) {
+  const end = endedAt ? new Date(endedAt).getTime() : Date.now();
+  const ms = Math.max(0, end - new Date(startedAt).getTime());
   const totalMin = Math.floor(ms / 60000);
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  if (totalMin > 0) return `${m}m`;
+  const s = Math.floor(ms / 1000);
+  return `${s}s`;
 }
 
 // ---------------------------------------------------------------------------
@@ -531,10 +536,17 @@ export default function ExamDetailPage() {
                           </div>
 
                           {session && (
-                            <div className="flex gap-4 text-[11px] text-muted-foreground">
-                              <span>⏱ In exam: {formatElapsed(session.startedAt)}</span>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                               <span>
-                                Last activity: {formatDistanceToNow(new Date(session.lastActivityAt), { addSuffix: true })}
+                                ⏱ Time in exam:{" "}
+                                {formatElapsed(
+                                  session.startedAt,
+                                  session.status === "submitted" ? session.lastActivityAt : undefined
+                                )}
+                              </span>
+                              <span>
+                                Last interactive:{" "}
+                                {formatDistanceToNow(new Date(session.lastActivityAt), { addSuffix: true })}
                               </span>
                             </div>
                           )}
