@@ -18,6 +18,15 @@ export interface ReportAttribution {
   reason: string;
 }
 
+export type ReportAgreement = "agree" | "partly" | "disagree";
+
+/** A teacher's verdict on a generated report, used to track AI accuracy. */
+export interface ReportFeedback {
+  scores?: Partial<ReportScores> | null;
+  agreement?: ReportAgreement | null;
+  comment?: string | null;
+}
+
 export interface Report {
   id: string;
   submissionId: string;
@@ -27,6 +36,10 @@ export interface Report {
   recommendations: string[];
   summary: string;
   generatedAt: string;
+  teacherScores: Partial<ReportScores> | null;
+  teacherAgreement: ReportAgreement | null;
+  teacherComment: string | null;
+  feedbackAt: string | null;
 }
 
 export const reportService = {
@@ -49,6 +62,15 @@ export const reportService = {
       if (err instanceof ApiError && err.status === 404) return null;
       throw err;
     }
+  },
+
+  /** Save the teacher's corrected scores and verdict for a report. */
+  saveFeedback: async (reportId: string, feedback: ReportFeedback): Promise<Report> => {
+    const data = await api.put<{ report: Report }>(
+      `/api/reports/${reportId}/feedback`,
+      feedback
+    );
+    return data.report;
   },
 
   /** URL to download the report as a PDF (opened directly by the browser). */

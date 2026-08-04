@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { examService } from "@/services/exam.service";
 import { studentService } from "@/services/student.service";
 import { reportService, Report, ReportScores } from "@/services/report.service";
+import { TeacherFeedbackCard } from "@/components/reports/TeacherFeedbackCard";
 import { downloadReportPdf } from "@/lib/reportPdf";
 import { Exam, User } from "@/types";
 import { ArrowLeft, Download, Brain } from "lucide-react";
@@ -20,11 +21,13 @@ function CircularScore({
   color,
   label,
   sublabel,
+  teacherScore,
 }: {
   score: number;
   color: string;
   label: string;
   sublabel?: string;
+  teacherScore?: number | null;
 }) {
   const r = 42;
   const circ = 2 * Math.PI * r;
@@ -56,6 +59,11 @@ function CircularScore({
       </svg>
       <p className="text-sm font-semibold text-gray-800 text-center leading-tight">{label}</p>
       {sublabel && <p className="text-xs text-gray-500 text-center">{sublabel}</p>}
+      {teacherScore != null && teacherScore !== clamped && (
+        <p className="text-xs font-semibold text-gray-700 text-center">
+          Your score: {teacherScore}
+        </p>
+      )}
     </div>
   );
 }
@@ -247,10 +255,10 @@ export default function AIReportPage() {
         <div className="rounded-2xl border bg-white p-6 shadow-sm">
           <h2 className="text-base font-bold text-gray-800 mb-5">Motivation Scores</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 justify-items-center">
-            <CircularScore score={scores.engagement} color="#3b82f6" label="Engagement" sublabel="Activity & responsiveness" />
-            <CircularScore score={scores.confidence} color="#8b5cf6" label="Confidence" sublabel="Answer certainty" />
-            <CircularScore score={scores.persistence} color="#10b981" label="Persistence" sublabel="Effort & duration" />
-            <CircularScore score={scores.emotionalState} color={emotional.color} label="Emotional State" sublabel={emotional.label} />
+            <CircularScore score={scores.engagement} color="#3b82f6" label="Engagement" sublabel="Participation & completion" teacherScore={report.teacherScores?.engagement} />
+            <CircularScore score={scores.confidence} color="#8b5cf6" label="Confidence" sublabel="Answer certainty" teacherScore={report.teacherScores?.confidence} />
+            <CircularScore score={scores.persistence} color="#10b981" label="Persistence" sublabel="Effort & duration" teacherScore={report.teacherScores?.persistence} />
+            <CircularScore score={scores.emotionalState} color={emotional.color} label="Emotional State" sublabel={emotional.label} teacherScore={report.teacherScores?.emotionalState} />
           </div>
         </div>
 
@@ -315,6 +323,8 @@ export default function AIReportPage() {
             </ol>
           </div>
         )}
+
+        <TeacherFeedbackCard report={report} onSaved={setReport} />
       </div>
     </Layout>
   );
