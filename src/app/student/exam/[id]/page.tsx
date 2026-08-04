@@ -19,7 +19,11 @@ import {
 import { examService } from "@/services/exam.service";
 import { ApiError } from "@/lib/api";
 import { liveSessionService } from "@/services/liveSession.service";
-import { submissionService } from "@/services/submission.service";
+import {
+  submissionService,
+  reconstructAnswersFromEvents,
+  reconstructResumeIndex,
+} from "@/services/submission.service";
 import { trackingService } from "@/services/tracking.service";
 import {
   Exam,
@@ -89,6 +93,9 @@ export default function TakeExamPage() {
   const submissionIdRef = useRef<string | null>(null);
   const examLoadStartedRef = useRef(false);
   const sessionEndedHandledRef = useRef(false);
+  const resumeIndexRef = useRef(0);
+  const answersRef = useRef<Record<string, string | number>>({});
+  const currentIndexRef = useRef(0);
 
   const saveTracking = async (
     eventType: string,
@@ -115,6 +122,37 @@ export default function TakeExamPage() {
   const exercises = useMemo(() => exam?.questions ?? [], [exam]);
   const totalExercises = exercises.length;
   const currentExercise = exercises[currentIndex];
+
+  // Keep latest answers/index in refs for unload / progress flush.
+  useEffect(() => {
+    const subscription = watch((form) => {
+      answersRef.current = (form.answers ?? {}) as Record<string, string | number>;
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  const flushProgressSave = useCallback(
+    (reason: string) => {
+      const submissionId = submissionIdRef.current;
+      if (!submissionId || sessionEndedHandledRef.current) return;
+
+      const answers: Answer[] = Object.entries(answersRef.current)
+        .filter(([, value]) => value !== undefined && value !== null && value !== "")
+        .map(([questionId, value]) => ({ questionId, value }));
+
+      if (answers.length === 0) return;
+
+      submissionService.saveProgressBeacon(submissionId, answers, {
+        reason,
+        exerciseIndex: currentIndexRef.current,
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     if (authLoading || !user || examLoadStartedRef.current) return;
@@ -144,21 +182,12 @@ export default function TakeExamPage() {
           return;
         }
 
-        setExam(data);
-        const started = new Date();
-        setStartTime(started);
-
         liveSessionService.joinSession(examId, user.id, user.name);
         void liveSessionService.addStudentToSession(examId, user.id);
-        void trackingService.startStudentSession(
-          examId,
-          user.id,
-          data.questions.length,
-          started
-        );
 
+        let submission;
         try {
-          const submission = await submissionService.startSubmission(
+          submission = await submissionService.startSubmission(
             examId,
             data.questions.length
           );
@@ -183,21 +212,93 @@ export default function TakeExamPage() {
           return;
         }
 
+        // Restore any answers saved before a close / exit.
+        let restoredCount = 0;
+        try {
+          const { trackingEvents } = await submissionService.getById(submission.id);
+          const restored = reconstructAnswersFromEvents(trackingEvents);
+          restoredCount = Object.keys(restored).length;
+
+          for (const [questionId, value] of Object.entries(restored)) {
+            setValue(`answers.${questionId}`, value);
+            answersRef.current[questionId] = value;
+          }
+
+          if (restoredCount > 0) {
+            setMetrics((prev) => {
+              const next = { ...prev };
+              for (const [questionId, value] of Object.entries(restored)) {
+                next[questionId] = {
+                  ...(next[questionId] ?? {
+                    answerChanged: false,
+                    skipped: true,
+                    revisited: false,
+                  }),
+                  answerValue: value,
+                  skipped: false,
+                  answerChanged: false,
+                };
+              }
+              return next;
+            });
+          }
+
+          const resumeIndex = reconstructResumeIndex(
+            trackingEvents,
+            data.questions.length
+          );
+          resumeIndexRef.current = resumeIndex;
+          currentIndexRef.current = resumeIndex;
+          setCurrentIndex(resumeIndex);
+        } catch (err) {
+          console.error("Failed to restore saved answers:", err);
+        }
+
+        const started = new Date(submission.createdAt || Date.now());
+        setStartTime(started);
+        void trackingService.startStudentSession(
+          examId,
+          user.id,
+          data.questions.length,
+          started
+        );
+
+        // Reveal exam UI only after answers are hydrated into the form.
+        setExam(data);
+
+        if (restoredCount > 0) {
+          toast({
+            title: "Progress restored",
+            description: "Your previous answers were loaded. Continue where you left off.",
+          });
+        }
+
         const FIVE_HOURS = 5 * 60 * 60 * 1000;
         const THIRTY_MIN = 30 * 60 * 1000;
+        const elapsed = Date.now() - started.getTime();
+        const remaining = Math.max(0, FIVE_HOURS - elapsed);
 
-        const autoSubmitTimeout = setTimeout(() => {
+        if (remaining === 0) {
           setAutoSubmitted(true);
-        }, FIVE_HOURS);
+        } else {
+          const autoSubmitTimeout = setTimeout(() => {
+            setAutoSubmitted(true);
+          }, remaining);
 
-        const warningTimeout = setTimeout(() => {
-          setShow30MinWarning(true);
-        }, FIVE_HOURS - THIRTY_MIN);
+          let warningTimeout: ReturnType<typeof setTimeout> | undefined;
+          if (remaining <= THIRTY_MIN) {
+            setShow30MinWarning(true);
+          } else {
+            warningTimeout = setTimeout(() => {
+              setShow30MinWarning(true);
+            }, remaining - THIRTY_MIN);
+          }
 
-        clearTimers = () => {
-          clearTimeout(autoSubmitTimeout);
-          clearTimeout(warningTimeout);
-        };
+          clearTimers = () => {
+            clearTimeout(autoSubmitTimeout);
+            if (warningTimeout) clearTimeout(warningTimeout);
+          };
+        }
       } catch (error) {
         if (error instanceof ApiError && error.status === 409) {
           toast({
@@ -221,7 +322,25 @@ export default function TakeExamPage() {
     return () => {
       clearTimers?.();
     };
-  }, [examId, user, authLoading, router, toast]);
+  }, [examId, user, authLoading, router, toast, setValue]);
+
+  // Flush answers when the student closes the tab, refreshes, or navigates away.
+  useEffect(() => {
+    const onPageHide = () => flushProgressSave("page_hide");
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        flushProgressSave("visibility_hidden");
+      }
+    };
+
+    window.addEventListener("pagehide", onPageHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", onPageHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+      flushProgressSave("component_unmount");
+    };
+  }, [flushProgressSave]);
 
   useEffect(() => {
     if (autoSubmitted && exam && !sessionEndedHandledRef.current) {
@@ -306,6 +425,24 @@ export default function TakeExamPage() {
       exerciseIndex: index,
       durationOnExercise: ensureMetrics(exercise.id).durationOnExercise,
     });
+
+    // Snapshot all answers so a mid-exam exit can be restored later.
+    const formValues = answersRef.current;
+    const answers: Answer[] = exercises.map((q) => ({
+      questionId: q.id,
+      value: formValues[q.id] ?? "",
+    })).filter((a) => a.value !== "");
+    if (answers.length > 0 && submissionIdRef.current) {
+      try {
+        await submissionService.saveEvent(submissionIdRef.current, "progress_save", {
+          answers,
+          reason: "exercise_leave",
+          exerciseIndex: index,
+        });
+      } catch (err) {
+        console.error("Failed to save progress snapshot:", err);
+      }
+    }
   };
 
   const handleAnswerChange = async (exerciseId: string, index: number, value: string | number) => {
@@ -470,8 +607,9 @@ export default function TakeExamPage() {
   };
 
   const exitToDashboard = useCallback(() => {
+    flushProgressSave("exit_dashboard");
     router.push("/student/dashboard");
-  }, [router]);
+  }, [router, flushProgressSave]);
 
   const handleTeacherSessionEnded = useCallback(async () => {
     if (sessionEndedHandledRef.current) return;
@@ -568,7 +706,7 @@ export default function TakeExamPage() {
 
   useEffect(() => {
     if (exam && totalExercises > 0) {
-      handleEnterExercise(0);
+      handleEnterExercise(resumeIndexRef.current);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exam, totalExercises]);

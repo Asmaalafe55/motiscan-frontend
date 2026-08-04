@@ -68,6 +68,14 @@ export function DifferencesExercise({
     parseSelections(value)
   );
   const [submitted, setSubmitted] = useState(false);
+  const lastEmittedValue = useRef(value);
+
+  // Hydrate when parent restores a saved answer (e.g. student reopens the exam).
+  useEffect(() => {
+    if (value === lastEmittedValue.current) return;
+    lastEmittedValue.current = value;
+    setSelections(parseSelections(value));
+  }, [value]);
 
   const totalObjects = differenceObjects.length;
   // "Answered" = student made at least one selection for that row
@@ -126,7 +134,9 @@ export function DifferencesExercise({
 
     setSelections(updated);
     onTrackingUpdate(newTracking);
-    onChange(JSON.stringify(updated));
+    const serialized = JSON.stringify(updated);
+    lastEmittedValue.current = serialized;
+    onChange(serialized);
   };
 
   // ---------------------------------------------------------------------------

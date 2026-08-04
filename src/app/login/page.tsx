@@ -189,9 +189,9 @@ export default function LoginPage() {
             <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800 space-y-1">
               <p className="font-semibold mb-1">Demo Credentials:</p>
               <p><span className="font-medium">Teacher:</span> noor@test.com / teacher123</p>
-              <p className="text-blue-700 text-xs font-medium mt-1">Students (password: student123)</p>
-              <p>sara@test.com · ahmed@test.com</p>
-              <p>maya@test.com · omar@test.com</p>
+              <p><span className="font-medium">Teacher (empty):</span> demo@test.com / teacher123</p>
+              <p><span className="font-medium">Student:</span> sara@test.com / student123</p>
+              <p><span className="font-medium">Student:</span> ahmed@test.com / student123</p>
             </div>
 
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
