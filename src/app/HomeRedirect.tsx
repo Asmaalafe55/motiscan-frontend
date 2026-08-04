@@ -3,8 +3,9 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import HomePage from "@/components/HomePage";
 
-/** Sends logged-in users to their dashboard; others to login. */
+/** Sends logged-in users to their dashboard; others see the landing page. */
 export default function HomeRedirect() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
@@ -13,14 +14,16 @@ export default function HomeRedirect() {
     if (isLoading) return;
     if (user) {
       router.replace(`/${user.role}/dashboard`);
-    } else {
-      router.replace("/login");
     }
   }, [user, isLoading, router]);
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-    </div>
-  );
+  if (isLoading || user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-violet-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#6366f1] border-t-transparent" />
+      </div>
+    );
+  }
+
+  return <HomePage />;
 }

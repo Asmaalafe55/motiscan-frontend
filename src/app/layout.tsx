@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { LiveSessionProvider } from "@/contexts/LiveSessionContext";
 import { WebSocketProvider } from "@/contexts/WebSocketContext";
 import { Toaster } from "@/components/ui/toaster";
+import BackButton from "@/components/BackButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,8 +18,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MotiScan - Student Motivation Tracking",
+  title: "MotiScan - Student Motivation Tracking System",
   description: "Track and analyze student motivation through AI-powered assessments",
+  icons: {
+    icon: "/motiscan-logo.svg",
+    shortcut: "/motiscan-logo.svg",
+    apple: "/motiscan-logo.svg",
+  },
 };
 
 export default function RootLayout({
@@ -34,6 +40,7 @@ export default function RootLayout({
         <AuthProvider>
           <LiveSessionProvider>
             <WebSocketProvider>
+              <BackButton />
               {children}
               <Toaster />
             </WebSocketProvider>

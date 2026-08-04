@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { GraduationCap, User } from "lucide-react";
+import { GraduationCap, User, Info } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -192,6 +192,15 @@ export default function LoginPage() {
               <p className="text-blue-700 text-xs font-medium mt-1">Students (password: student123)</p>
               <p>sara@test.com · ahmed@test.com</p>
               <p>maya@test.com · omar@test.com</p>
+            </div>
+
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#6366f1]" />
+              <p>
+                Lecturer accounts are provisioned directly by the organization.
+                Lecturers, in turn, manage the creation of student accounts. If
+                you need access, please contact your organization administrator.
+              </p>
             </div>
           </form>
         </CardContent>
