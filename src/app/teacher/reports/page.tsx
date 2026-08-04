@@ -10,14 +10,18 @@ import { studentService } from "@/services/student.service";
 import { reportService } from "@/services/report.service";
 import { pushActivity } from "@/lib/notifications";
 import { Exam, ExamSubmission, User } from "@/types";
+import { StudentAnswerReview } from "@/components/StudentAnswerReview";
 import {
   BarChart3,
   Brain,
+  Calendar,
   ChevronDown,
   ChevronUp,
+  Clock,
   FileText,
+  ListChecks,
   Loader2,
-  User as UserIcon,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -27,6 +31,103 @@ import { format } from "date-fns";
 interface StudentWithSubmissions {
   student: User;
   submissions: (ExamSubmission & { exam: Exam })[];
+}
+
+type SubmissionWithExam = ExamSubmission & { exam: Exam };
+
+// ---------------------------------------------------------------------------
+// Read-only answers modal
+// ---------------------------------------------------------------------------
+function ViewAnswersModal({
+  submission,
+  studentName,
+  onClose,
+}: {
+  submission: SubmissionWithExam;
+  studentName: string;
+  onClose: () => void;
+}) {
+  const { exam, answers } = submission;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 flex-shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <ListChecks className="h-5 w-5 text-white flex-shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-white truncate">
+                {exam.title}
+              </h2>
+              <p className="text-xs text-blue-100 truncate">{studentName}&apos;s answers</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 text-white/80 hover:text-white hover:bg-white/20 transition-colors flex-shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto p-6 space-y-5 flex-1">
+          {/* Meta info */}
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-4 w-4 flex-shrink-0" />
+              <span>
+                Submitted {format(new Date(submission.submittedAt), "MMM d, yyyy 'at' h:mm a")}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-4 w-4 flex-shrink-0" />
+              <span>Time spent: {Math.floor((submission.timeSpent ?? 0) / 60)} min</span>
+            </div>
+          </div>
+
+          {/* Answers */}
+          {exam.questions.length > 0 ? (
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-gray-700">Student Answers</p>
+              {exam.questions.map((question, idx) => {
+                const answer =
+                  answers.find((a) => a.questionId === question.id) ??
+                  // Fallback: some payloads key answers by exercise/library id
+                  answers.find((a) => (a as { exerciseId?: string }).exerciseId === question.id);
+                return (
+                  <StudentAnswerReview
+                    key={question.id}
+                    question={question}
+                    answer={answer}
+                    exerciseIndex={idx}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No exercises found for this exam.
+            </p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t bg-gray-50 flex-shrink-0">
+          <Button variant="outline" className="w-full" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -47,6 +148,11 @@ export default function TeacherReportsPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   // Track which (studentId:examId) pairs are generating a report
   const [generating, setGenerating] = useState<Set<string>>(new Set());
+  // Submission whose answers are shown in the modal (with owning student name)
+  const [viewingAnswers, setViewingAnswers] = useState<{
+    submission: SubmissionWithExam;
+    studentName: string;
+  } | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -238,7 +344,21 @@ export default function TeacherReportsPage() {
                                   Submitted {format(new Date(sub.submittedAt), "MMM d, yyyy 'at' h:mm a")}
                                 </p>
                               </div>
-                              <div className="flex-shrink-0">
+                              <div className="flex-shrink-0 flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 text-xs gap-1.5"
+                                  onClick={() =>
+                                    setViewingAnswers({
+                                      submission: sub,
+                                      studentName: student.name,
+                                    })
+                                  }
+                                >
+                                  <ListChecks className="h-3.5 w-3.5" />
+                                  View Answers
+                                </Button>
                                 {hasReport ? (
                                   <Button
                                     size="sm"
@@ -283,6 +403,14 @@ export default function TeacherReportsPage() {
           </div>
         )}
       </div>
+
+      {viewingAnswers && (
+        <ViewAnswersModal
+          submission={viewingAnswers.submission}
+          studentName={viewingAnswers.studentName}
+          onClose={() => setViewingAnswers(null)}
+        />
+      )}
     </Layout>
   );
 }
