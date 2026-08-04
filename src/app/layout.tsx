@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -6,6 +6,7 @@ import { LiveSessionProvider } from "@/contexts/LiveSessionContext";
 import { WebSocketProvider } from "@/contexts/WebSocketContext";
 import { Toaster } from "@/components/ui/toaster";
 import BackButton from "@/components/BackButton";
+import SmallScreenNotice from "@/components/SmallScreenNotice";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,6 +28,13 @@ export const metadata: Metadata = {
   },
 };
 
+// Without `width=device-width`, mobile Safari reports a ~980px layout viewport
+// and the small-screen gate below would never trigger on a phone.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -37,12 +45,19 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <SmallScreenNotice />
+
         <AuthProvider>
           <LiveSessionProvider>
             <WebSocketProvider>
-              <BackButton />
-              {children}
-              <Toaster />
+              {/* Below `lg` the app is hidden in favour of SmallScreenNotice.
+                  `lg:contents` drops this wrapper from the layout on supported
+                  screens so page-level sizing keeps working unchanged. */}
+              <div className="hidden lg:contents">
+                <BackButton />
+                {children}
+                <Toaster />
+              </div>
             </WebSocketProvider>
           </LiveSessionProvider>
         </AuthProvider>
