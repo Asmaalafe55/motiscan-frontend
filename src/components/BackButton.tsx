@@ -14,11 +14,25 @@ const PUBLIC_ROUTES = [
   "/about",
 ];
 
+/** Explicit parent for each public page — avoids unreliable history.back(). */
+function getBackHref(pathname: string): string {
+  if (pathname === "/login" || pathname.startsWith("/login/")) return "/";
+  if (
+    pathname === "/forgot-password" ||
+    pathname.startsWith("/forgot-password/") ||
+    pathname === "/reset-password" ||
+    pathname.startsWith("/reset-password/")
+  ) {
+    return "/login";
+  }
+  return "/";
+}
+
 /**
  * Global floating back button, fixed to the top-left corner.
  * Only rendered on public pre-login pages (see PUBLIC_ROUTES).
- * Returns to the previous page, falling back to the home page
- * when there's no history to go back to.
+ * Navigates to a known parent route (login → home, password flows → login)
+ * instead of window.history.back(), which often fails or leaves the site.
  */
 export default function BackButton() {
   const router = useRouter();
@@ -32,11 +46,7 @@ export default function BackButton() {
   if (!isPublicRoute) return null;
 
   const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push("/");
-    }
+    router.push(getBackHref(pathname));
   };
 
   return (
