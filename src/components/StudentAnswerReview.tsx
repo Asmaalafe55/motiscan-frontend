@@ -414,12 +414,15 @@ interface StudentAnswerReviewProps {
   question: Question;
   answer?: Answer;
   exerciseIndex: number;
+  /** Label above the answer content. Defaults to "Student answer". */
+  answerLabel?: string;
 }
 
 export function StudentAnswerReview({
   question,
   answer,
   exerciseIndex,
+  answerLabel = "Student answer",
 }: StudentAnswerReviewProps) {
   const typeLabel = question.type.replace(/_/g, " ");
 
@@ -446,7 +449,7 @@ export function StudentAnswerReview({
 
       {/* Friendly answer */}
       <div className="mx-4 mb-4 rounded-lg border bg-white px-3 py-3">
-        <p className="text-xs text-muted-foreground mb-2 font-medium">Student answer</p>
+        <p className="text-xs text-muted-foreground mb-2 font-medium">{answerLabel}</p>
         <FriendlyAnswer question={question} value={answer?.value} />
       </div>
     </div>
