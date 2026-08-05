@@ -4,11 +4,22 @@ import { useEffect, useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { StudentAnswerReview } from "@/components/StudentAnswerReview";
 import { examService } from "@/services/exam.service";
-import { ExamSubmission, Exam } from "@/types";
+import { ExamSubmission, Exam, Question } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { BookOpen, Calendar, Clock, Eye, FileText, X } from "lucide-react";
+import { BookOpen, Calendar, Clock, Eye, FileText, Loader2, X } from "lucide-react";
 import { format } from "date-fns";
+
+type HistorySubmission = ExamSubmission & {
+  exam?: Exam | NonNullable<ExamSubmission["exam"]>;
+};
+
+function hasFullQuestions(
+  exam: HistorySubmission["exam"]
+): exam is Exam {
+  return !!exam && "questions" in exam && Array.isArray(exam.questions) && exam.questions.length > 0;
+}
 
 // ---------------------------------------------------------------------------
 // Read-only view modal
@@ -20,6 +31,8 @@ interface ViewModalProps {
 
 function ViewModal({ submission, onClose }: ViewModalProps) {
   const exam = submission.exam;
+  const questions: Question[] = hasFullQuestions(exam) ? exam.questions : [];
+  const isLoadingExam = !hasFullQuestions(exam);
 
   return (
     <div
@@ -27,13 +40,13 @@ function ViewModal({ submission, onClose }: ViewModalProps) {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col"
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-white" />
+          <div className="flex items-center gap-2 min-w-0">
+            <FileText className="h-5 w-5 text-white flex-shrink-0" />
             <h2 className="text-base font-semibold text-white truncate">
               {exam?.title ?? "Exam Details"}
             </h2>
@@ -63,35 +76,35 @@ function ViewModal({ submission, onClose }: ViewModalProps) {
           </div>
 
           {/* Answers */}
-          {exam && "questions" in exam && exam.questions.length > 0 && (
+          {isLoadingExam ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              <p className="text-sm text-muted-foreground">Loading your answers…</p>
+            </div>
+          ) : questions.length > 0 ? (
             <div className="space-y-4">
               <p className="text-sm font-semibold text-gray-700">Your Answers</p>
-              {exam.questions.map((question, idx) => {
-                const answer = submission.answers.find(
-                  (a) => a.questionId === question.id
-                );
-                const answerText = answer?.value
-                  ? String(answer.value)
-                  : "No answer submitted";
-
+              {questions.map((question, idx) => {
+                const answer =
+                  submission.answers.find((a) => a.questionId === question.id) ??
+                  submission.answers.find(
+                    (a) => (a as { exerciseId?: string }).exerciseId === question.id
+                  );
                 return (
-                  <div key={question.id} className="rounded-lg border bg-gray-50 p-4 space-y-2">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      Exercise {idx + 1}
-                    </p>
-                    <p className="text-sm text-gray-700 leading-snug line-clamp-2">
-                      {question.text}
-                    </p>
-                    <div className="rounded-md bg-white border px-3 py-2">
-                      <p className="text-xs text-muted-foreground mb-0.5">Your answer:</p>
-                      <p className="text-sm text-gray-800 leading-relaxed">
-                        {answerText}
-                      </p>
-                    </div>
-                  </div>
+                  <StudentAnswerReview
+                    key={question.id}
+                    question={question}
+                    answer={answer}
+                    exerciseIndex={idx}
+                    answerLabel="Your answer"
+                  />
                 );
               })}
             </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No exercises found for this exam.
+            </p>
           )}
         </div>
 
@@ -105,10 +118,6 @@ function ViewModal({ submission, onClose }: ViewModalProps) {
     </div>
   );
 }
-
-type HistorySubmission = ExamSubmission & {
-  exam?: Exam | NonNullable<ExamSubmission["exam"]>;
-};
 
 // ---------------------------------------------------------------------------
 // Page
@@ -138,11 +147,7 @@ export default function StudentHistoryPage() {
   const handleViewSubmission = async (submission: HistorySubmission) => {
     setViewingSubmission(submission);
 
-    const hasQuestions =
-      submission.exam &&
-      "questions" in submission.exam &&
-      submission.exam.questions.length > 0;
-    if (hasQuestions) return;
+    if (hasFullQuestions(submission.exam)) return;
 
     const fullExam = await examService.getSubmittedExamForStudent(submission.examId);
     if (!fullExam) return;
