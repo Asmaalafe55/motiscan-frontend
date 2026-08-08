@@ -371,34 +371,31 @@ export function DifferencesExercise({
                       submitted && obj.correctAnswers.length === 0;
 
                     return (
-                      <>
-                        <div className="h-6 w-px bg-border self-center" />
-                        <button
-                          type="button"
-                          onClick={() => handleToggle(obj.id, NO_CHANGE_VALUE)}
-                          disabled={submitted}
-                          className={cn(
-                            "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors select-none",
-                            isSelected && !submitted && "bg-blue-600 text-white border-blue-600",
-                            isSelected &&
-                              submitted &&
-                              isCorrect === true &&
-                              "bg-green-600 text-white border-green-600",
-                            isSelected &&
-                              submitted &&
-                              isCorrect === false &&
-                              "bg-red-500 text-white border-red-500",
-                            !isSelected &&
-                              isCorrectOption &&
-                              "ring-2 ring-green-500 border-green-400 bg-green-50 text-green-800",
-                            !isSelected &&
-                              !isCorrectOption &&
-                              "bg-background border-border text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-                          )}
-                        >
-                          {NO_CHANGE_LABEL}
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        onClick={() => handleToggle(obj.id, NO_CHANGE_VALUE)}
+                        disabled={submitted}
+                        className={cn(
+                          "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors select-none",
+                          isSelected && !submitted && "bg-blue-600 text-white border-blue-600",
+                          isSelected &&
+                            submitted &&
+                            isCorrect === true &&
+                            "bg-green-600 text-white border-green-600",
+                          isSelected &&
+                            submitted &&
+                            isCorrect === false &&
+                            "bg-red-500 text-white border-red-500",
+                          !isSelected &&
+                            isCorrectOption &&
+                            "ring-2 ring-green-500 border-green-400 bg-green-50 text-green-800",
+                          !isSelected &&
+                            !isCorrectOption &&
+                            "bg-background border-border text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                        )}
+                      >
+                        {NO_CHANGE_LABEL}
+                      </button>
                     );
                   })()}
                 </div>
