@@ -30,7 +30,7 @@ talking to the [`motiscan-backend`](../motiscan-backend) REST + Socket.IO API.
 ```bash
 npm install
 
-# Point the app at a backend (no trailing slash, no /api suffix):
+# Point the app at a backend no trailing slash, no /api suffix:
 echo "NEXT_PUBLIC_API_URL=http://localhost:5000" > .env.local
 
 npm run dev
