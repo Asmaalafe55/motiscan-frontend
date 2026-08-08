@@ -25,6 +25,19 @@ interface DifferencesExerciseProps {
 }
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Sentinel value stored in a row's selection array when the student explicitly
+ * declares the object is unchanged. This is what makes "no change" an *active*
+ * answer instead of an empty (untouched) row — so a row the student never
+ * interacted with is never counted as correct.
+ */
+export const NO_CHANGE_VALUE = "__no_change__";
+const NO_CHANGE_LABEL = "No change";
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -46,6 +59,29 @@ function arraysEqual(a: string[], b: string[]): boolean {
   const sa = [...a].sort();
   const sb = [...b].sort();
   return sa.every((v, i) => v === sb[i]);
+}
+
+/**
+ * Decide whether a single object was answered correctly.
+ *
+ * A row the student never touched (empty selection) is NEVER correct — the
+ * student must make an explicit choice, including explicitly picking
+ * "No change" for an unchanged object. This prevents unanswered rows from
+ * being auto-credited.
+ */
+function isObjectCorrect(selected: string[], correctAnswers: string[]): boolean {
+  if (selected.length === 0) return false;
+
+  const saysNoChange = selected.includes(NO_CHANGE_VALUE);
+  const chosenChanges = selected.filter((s) => s !== NO_CHANGE_VALUE);
+
+  if (correctAnswers.length === 0) {
+    // The object is unchanged — correct only if the student explicitly said so.
+    return saysNoChange && chosenChanges.length === 0;
+  }
+
+  // The object changed — "No change" must not be picked and the change types must match.
+  return !saysNoChange && arraysEqual(chosenChanges, correctAnswers);
 }
 
 // ---------------------------------------------------------------------------
@@ -103,10 +139,19 @@ export function DifferencesExercise({
     // Calling parent setters inside a functional updater triggers React's
     // "cannot update during render" warning.
     const current = selections[objectId] ?? [];
-    const has = current.includes(changeType);
-    const newList = has
-      ? current.filter((c) => c !== changeType)
-      : [...current, changeType];
+
+    let newList: string[];
+    if (changeType === NO_CHANGE_VALUE) {
+      // "No change" is exclusive: picking it clears every other change type,
+      // and toggling it off leaves the row unanswered.
+      newList = current.includes(NO_CHANGE_VALUE) ? [] : [NO_CHANGE_VALUE];
+    } else {
+      // Picking a real change type first drops any "No change" marker.
+      const base = current.filter((c) => c !== NO_CHANGE_VALUE);
+      newList = base.includes(changeType)
+        ? base.filter((c) => c !== changeType)
+        : [...base, changeType];
+    }
 
     const updated: Record<string, string[]> = { ...selections };
     if (newList.length === 0) {
@@ -145,7 +190,7 @@ export function DifferencesExercise({
 
   const handleSubmitAnswers = () => {
     const correctCount = differenceObjects.filter((obj) =>
-      arraysEqual(selections[obj.id] ?? [], obj.correctAnswers)
+      isObjectCorrect(selections[obj.id] ?? [], obj.correctAnswers)
     ).length;
 
     const score = totalObjects > 0 ? correctCount / totalObjects : 0;
@@ -174,7 +219,7 @@ export function DifferencesExercise({
 
   const correctCount = submitted
     ? differenceObjects.filter((obj) =>
-        arraysEqual(selections[obj.id] ?? [], obj.correctAnswers)
+        isObjectCorrect(selections[obj.id] ?? [], obj.correctAnswers)
       ).length
     : 0;
 
@@ -218,7 +263,7 @@ export function DifferencesExercise({
             <span className="font-medium text-foreground">
               {answeredCount} of {totalObjects} object{totalObjects !== 1 ? "s" : ""} answered
               <span className="ml-2 text-xs font-normal text-muted-foreground">
-                — leave blank if an object has no change
+                — pick &ldquo;No change&rdquo; if an object looks the same
               </span>
             </span>
             {submitted && (
@@ -254,7 +299,7 @@ export function DifferencesExercise({
             const selected = selections[obj.id] ?? [];
             const isAnswered = selected.length > 0;
             const isCorrect = submitted
-              ? arraysEqual(selected, obj.correctAnswers)
+              ? isObjectCorrect(selected, obj.correctAnswers)
               : null;
 
             return (
@@ -316,6 +361,46 @@ export function DifferencesExercise({
                       </button>
                     );
                   })}
+
+                  {/* Explicit "No change" choice — the student must actively pick
+                      this for an unchanged object. Leaving the row blank is now
+                      treated as unanswered, not as a correct "no change". */}
+                  {(() => {
+                    const isSelected = selected.includes(NO_CHANGE_VALUE);
+                    const isCorrectOption =
+                      submitted && obj.correctAnswers.length === 0;
+
+                    return (
+                      <>
+                        <div className="h-6 w-px bg-border self-center" />
+                        <button
+                          type="button"
+                          onClick={() => handleToggle(obj.id, NO_CHANGE_VALUE)}
+                          disabled={submitted}
+                          className={cn(
+                            "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors select-none",
+                            isSelected && !submitted && "bg-blue-600 text-white border-blue-600",
+                            isSelected &&
+                              submitted &&
+                              isCorrect === true &&
+                              "bg-green-600 text-white border-green-600",
+                            isSelected &&
+                              submitted &&
+                              isCorrect === false &&
+                              "bg-red-500 text-white border-red-500",
+                            !isSelected &&
+                              isCorrectOption &&
+                              "ring-2 ring-green-500 border-green-400 bg-green-50 text-green-800",
+                            !isSelected &&
+                              !isCorrectOption &&
+                              "bg-background border-border text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                          )}
+                        >
+                          {NO_CHANGE_LABEL}
+                        </button>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Post-submit hint for incorrect rows */}

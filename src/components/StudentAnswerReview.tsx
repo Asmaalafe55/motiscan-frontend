@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { Answer, Question } from "@/types";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { NO_CHANGE_VALUE } from "@/components/exercises/DifferencesExercise";
 
 // ---------------------------------------------------------------------------
 // Parsing helpers
@@ -205,14 +206,18 @@ function DifferencesAnswer({
               {entry.name}
             </span>
             <span className="h-4 w-px bg-border flex-shrink-0" />
-            {entry.selected.length > 0 ? (
+            {entry.selected.includes(NO_CHANGE_VALUE) ? (
+              <span className="text-xs text-muted-foreground italic">No change</span>
+            ) : entry.selected.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
-                {entry.selected.map((t) => (
-                  <Tag key={t}>{t}</Tag>
-                ))}
+                {entry.selected
+                  .filter((t) => t !== NO_CHANGE_VALUE)
+                  .map((t) => (
+                    <Tag key={t}>{t}</Tag>
+                  ))}
               </div>
             ) : (
-              <span className="text-xs text-muted-foreground italic">No change</span>
+              <span className="text-xs text-muted-foreground italic">Not answered</span>
             )}
           </li>
         ))}
