@@ -991,6 +991,11 @@ export default function TakeExamPage() {
             <Button
               type="button"
               variant="gradient"
+              className={
+                isLast
+                  ? "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
+                  : undefined
+              }
               disabled={isSubmitting}
               onClick={handleNext}
             >
@@ -1019,6 +1024,7 @@ export default function TakeExamPage() {
                 <Button
                   type="button"
                   variant="gradient"
+                  className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
                   onClick={handleConfirmSubmit}
                   disabled={isSubmitting}
                 >
