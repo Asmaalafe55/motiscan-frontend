@@ -52,9 +52,31 @@ function getCellLabels(size: PerceptionGridSize): string[] {
 // Image upload helper
 // ---------------------------------------------------------------------------
 
-// Wrap an image URL in an SVG for uniform rendering in the perception grid
-function imageToSvgString(imageUrl: string, w = 120, h = 120): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"><image href="${imageUrl}" width="${w}" height="${h}"/></svg>`;
+/**
+ * Turn an uploaded file into a value for design_svg / section_svg.
+ *
+ * SVG files are inlined as markup (same as seeded exercises) so they preview
+ * correctly and do not depend on Render's ephemeral upload disk.
+ *
+ * Raster files are uploaded and stored as a plain URL. Do NOT wrap the URL in
+ * an outer <svg><image href=…>> — resolveMediaUrl turns that into a data: URI,
+ * and browsers block external <image> loads inside SVG-as-<img>, which shows a
+ * blank preview.
+ */
+async function fileToPerceptionMedia(file: File): Promise<string> {
+  const isSvg =
+    file.type === "image/svg+xml" || /\.svg$/i.test(file.name);
+
+  if (isSvg) {
+    const text = (await file.text()).trim();
+    if (!/<svg[\s>]/i.test(text)) {
+      throw new Error("File does not look like a valid SVG.");
+    }
+    return text;
+  }
+
+  const [url] = await uploadImages([file]);
+  return url;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,13 +172,19 @@ export function AnalyticalPerceptionBuilder({
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Allow re-selecting the same file after a failed attempt
+    e.target.value = "";
     try {
-      const [url] = await uploadImages([file]);
-      const size = slot === "design" ? 120 : 40;
-      const svgStr = imageToSvgString(url, size, size);
-      updateCell(cellLabel, slot === "design" ? { design_svg: svgStr } : { section_svg: svgStr });
+      const media = await fileToPerceptionMedia(file);
+      updateCell(
+        cellLabel,
+        slot === "design" ? { design_svg: media } : { section_svg: media }
+      );
     } catch {
-      setErrors((prev) => [...prev, `Upload failed for cell ${cellLabel} — make sure the backend is running.`]);
+      setErrors((prev) => [
+        ...prev,
+        `Upload failed for cell ${cellLabel} — try again, or use an SVG/PNG from the Desktop folder.`,
+      ]);
     }
   };
 

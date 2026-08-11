@@ -483,11 +483,67 @@ export const MOCK_DESIGN_SVGS = {
      <polyline points="6,102 21,88 36,102 51,88 66,102 81,88 96,102 114,88" fill="none" stroke="#1a1a1a" stroke-width="1.8"/>`,
     "0 0 120 120"
   ),
+  concentricCircles: makeSvgString(
+    `<circle cx="60" cy="60" r="52" fill="white" stroke="#1a1a1a" stroke-width="2.5"/>
+     <circle cx="60" cy="60" r="40" fill="none" stroke="#1a1a1a" stroke-width="1.8"/>
+     <circle cx="60" cy="60" r="28" fill="none" stroke="#1a1a1a" stroke-width="1.6"/>
+     <circle cx="60" cy="60" r="16" fill="none" stroke="#1a1a1a" stroke-width="1.4"/>
+     <circle cx="60" cy="60" r="6" fill="none" stroke="#1a1a1a" stroke-width="1.2"/>`,
+    "0 0 120 120"
+  ),
+  flowerPetals: makeSvgString(
+    `<circle cx="60" cy="60" r="52" fill="white" stroke="#1a1a1a" stroke-width="2.5"/>
+     <ellipse cx="60" cy="36" rx="18" ry="11" fill="none" stroke="#1a1a1a" stroke-width="1.8" transform="rotate(0 60 36)"/>
+     <ellipse cx="80.8" cy="48" rx="18" ry="11" fill="none" stroke="#1a1a1a" stroke-width="1.8" transform="rotate(60 80.8 48)"/>
+     <ellipse cx="80.8" cy="72" rx="18" ry="11" fill="none" stroke="#1a1a1a" stroke-width="1.8" transform="rotate(120 80.8 72)"/>
+     <ellipse cx="60" cy="84" rx="18" ry="11" fill="none" stroke="#1a1a1a" stroke-width="1.8" transform="rotate(180 60 84)"/>
+     <ellipse cx="39.2" cy="72" rx="18" ry="11" fill="none" stroke="#1a1a1a" stroke-width="1.8" transform="rotate(240 39.2 72)"/>
+     <ellipse cx="39.2" cy="48" rx="18" ry="11" fill="none" stroke="#1a1a1a" stroke-width="1.8" transform="rotate(300 39.2 48)"/>
+     <circle cx="60" cy="60" r="10" fill="none" stroke="#1a1a1a" stroke-width="2"/>`,
+    "0 0 120 120"
+  ),
+  spokeWheel: makeSvgString(
+    `<circle cx="60" cy="60" r="52" fill="white" stroke="#1a1a1a" stroke-width="2.5"/>
+     <line x1="8" y1="60" x2="112" y2="60" stroke="#1a1a1a" stroke-width="2"/>
+     <line x1="60" y1="8" x2="60" y2="112" stroke="#1a1a1a" stroke-width="2"/>
+     <line x1="23" y1="23" x2="97" y2="97" stroke="#1a1a1a" stroke-width="2"/>
+     <line x1="97" y1="23" x2="23" y2="97" stroke="#1a1a1a" stroke-width="2"/>
+     <circle cx="60" cy="60" r="7" fill="none" stroke="#1a1a1a" stroke-width="1.6"/>`,
+    "0 0 120 120"
+  ),
+  nestedDiamonds: makeSvgString(
+    `<polygon points="60,8 112,60 60,112 8,60" fill="white" stroke="#1a1a1a" stroke-width="2.5"/>
+     <polygon points="60,22 98,60 60,98 22,60" fill="none" stroke="#1a1a1a" stroke-width="1.8"/>
+     <polygon points="60,36 84,60 60,84 36,60" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
+     <polygon points="60,48 72,60 60,72 48,60" fill="none" stroke="#1a1a1a" stroke-width="1.3"/>`,
+    "0 0 120 120"
+  ),
+  arrowCross: makeSvgString(
+    `<rect x="6" y="6" width="108" height="108" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+     <polygon points="60,14 70,30 63,30 63,56 57,56 57,30 50,30" fill="#1a1a1a"/>
+     <polygon points="60,106 50,90 57,90 57,64 63,64 63,90 70,90" fill="#1a1a1a"/>
+     <polygon points="14,60 30,50 30,57 56,57 56,63 30,63 30,70" fill="#1a1a1a"/>
+     <polygon points="106,60 90,70 90,63 64,63 64,57 90,57 90,50" fill="#1a1a1a"/>`,
+    "0 0 120 120"
+  ),
+  squareGrid: makeSvgString(
+    `<rect x="6" y="6" width="108" height="108" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+     <rect x="16" y="16" width="24" height="24" fill="none" stroke="#1a1a1a" stroke-width="1.8"/>
+     <rect x="48" y="16" width="24" height="24" fill="none" stroke="#1a1a1a" stroke-width="1.8"/>
+     <rect x="80" y="16" width="24" height="24" fill="none" stroke="#1a1a1a" stroke-width="1.8"/>
+     <rect x="16" y="48" width="24" height="24" fill="none" stroke="#1a1a1a" stroke-width="1.8"/>
+     <rect x="48" y="48" width="24" height="24" fill="none" stroke="#1a1a1a" stroke-width="1.8"/>
+     <rect x="80" y="48" width="24" height="24" fill="none" stroke="#1a1a1a" stroke-width="1.8"/>
+     <rect x="16" y="80" width="24" height="24" fill="none" stroke="#1a1a1a" stroke-width="1.8"/>
+     <rect x="48" y="80" width="24" height="24" fill="none" stroke="#1a1a1a" stroke-width="1.8"/>
+     <rect x="80" y="80" width="24" height="24" fill="none" stroke="#1a1a1a" stroke-width="1.8"/>`,
+    "0 0 120 120"
+  ),
 } as const;
 
 export const MOCK_SECTION_SVGS = {
   arrow: makeSvgString(
-    `<polyline points="6,30 20,10 34,30" fill="none" stroke="#4F46E5" stroke-width="2.5" stroke-linejoin="round"/>`,
+    `<polygon points="20,6 30,18 24,18 24,34 16,34 16,18 10,18" fill="none" stroke="#4F46E5" stroke-width="2.5" stroke-linejoin="round"/>`,
     "0 0 40 40"
   ),
   /** Closed triangle — use when triangular wedge shapes appear in design */
