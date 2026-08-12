@@ -7,7 +7,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  COMING_SOON_EXERCISE_TYPES,
   OPEN_EXERCISE_TYPES,
   type ExerciseTypeKey,
 } from "./exerciseTypeCatalog";
@@ -23,7 +22,7 @@ interface TypeSelectorModalProps {
 
 /**
  * Shown only when the teacher clicks "Add New Exercise" (not on the library page).
- * Available types first, then locked types — same grid gap throughout, no section headings.
+ * Lists the exercise types a teacher can create.
  */
 export function TypeSelectorModal({ open, onClose, onSelect }: TypeSelectorModalProps) {
   return (
@@ -40,14 +39,6 @@ export function TypeSelectorModal({ open, onClose, onSelect }: TypeSelectorModal
           >
             {OPEN_EXERCISE_TYPES.map((t) => (
               <ExerciseTypeTile key={t.key} type={t} onSelect={onSelect} />
-            ))}
-          </div>
-          <div
-            className="grid grid-cols-2 gap-3"
-            aria-label="Additional exercise types, not yet available"
-          >
-            {COMING_SOON_EXERCISE_TYPES.map((t) => (
-              <ExerciseTypeTile key={t.key} type={t} />
             ))}
           </div>
         </div>
