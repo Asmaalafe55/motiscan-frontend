@@ -6,8 +6,6 @@ export type ExerciseTypeKey =
   | "differences"
   | "shape_copy"
   | "analytical_perception"
-  | "similarity_ranking"
-  | "rating_scale"
   | "priority_sort";
 
 export interface ExerciseTypeInfo {
@@ -57,25 +55,6 @@ export const EXERCISE_TYPES: ExerciseTypeInfo[] = [
     iconEmoji: "📌",
     active: true,
   },
-  {
-    key: "similarity_ranking",
-    label: "Similarity Ranking",
-    description: "Student ranks images by similarity to a sample",
-    measures: "Comparison skills, visual analysis",
-    colour: "border-green-300 bg-green-50",
-    iconEmoji: "📊",
-    active: false,
-  },
-  {
-    key: "rating_scale",
-    label: "Rating Scale",
-    description: "Student rates themselves from 1 to 10",
-    measures: "Self-awareness, honesty",
-    colour: "border-pink-300 bg-pink-50",
-    iconEmoji: "⭐",
-    active: false,
-  },
 ];
 
 export const OPEN_EXERCISE_TYPES = EXERCISE_TYPES.filter((t) => t.active);
-export const COMING_SOON_EXERCISE_TYPES = EXERCISE_TYPES.filter((t) => !t.active);
